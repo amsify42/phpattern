@@ -1,2 +1,2 @@
-# phpattern
-Framework for developing PHP applications.
+# PHPattern
+Simple framework for building APIs in PHP.

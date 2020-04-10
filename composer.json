@@ -1,0 +1,36 @@
+{
+    "name": "amsify42/phpattern",
+    "description": "Framework for developing PHP applications",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Mohd Samiullah",
+            "email": "amsify42@gmail.com"
+        }
+    ],
+    "minimum-stability": "dev",
+    "require": {
+        "php": ">=7.0.0",
+        "amsify42/php-vars-data": "dev-master",
+        "amsify42/php-typestruct": "dev-master"
+    },
+    "require-dev": {
+        "phpunit/phpunit":  "^7.0"
+    },
+    "autoload": {
+        "files": [
+            "src/global/helpers.php"
+        ],
+        "psr-4": {
+            "PHPattern\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "files": [],
+        "psr-4": {
+            "Tests\\": "tests/",
+            "App\\": "tests/app/"
+        }
+    }
+}
