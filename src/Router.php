@@ -2,7 +2,7 @@
 
 namespace PHPattern;
 
-use PHPattern\Data\Evaluate;
+use Amsify42\PHPVarsData\Data\Evaluate;
 use PHPattern\Router\Route;
 use PHPattern\File\Json;
 use PHPattern\Request;

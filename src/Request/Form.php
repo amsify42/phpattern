@@ -5,7 +5,7 @@ namespace PHPattern\Request;
 use PHPattern\Request;
 use PHPattern\Request\Data;
 use PHPattern\Request\Validation;
-use PHPattern\Data\TypeStruct;
+use Amsify42\TypeStruct\TypeStruct;
 
 class Form extends Data
 {
@@ -86,8 +86,8 @@ class Form extends Data
 			}
 			$typeStruct = new TypeStruct();
 			$result 	= $typeStruct->validateFull($this->tsValidateFull)
-									 ->setForm($this)
-									 ->validate();
+									 ->setClass($this->typeStruct)
+									 ->validate($this->all());
 			if($result['is_validated'])
 			{
 				return true;
