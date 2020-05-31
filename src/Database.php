@@ -32,7 +32,7 @@ class Database
 	{
 		try
 		{
-			$this->connection = new PDO("mysql:host={$this->credentials->host()};dbname={$this->credentials->db()};charset=utf8mb4;", $this->credentials->user(), $this->credentials->password());
+			$this->connection = new PDO("mysql:host={$this->credentials->host()};dbname={$this->credentials->name()};port={$this->credentials->port()};charset=utf8mb4;", $this->credentials->user(), $this->credentials->password());
 			$this->connection->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 		}
 		catch(PDOException $e)

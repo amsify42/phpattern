@@ -8,9 +8,9 @@ Route::get('user', Actions\User::class);
 
 Route::post('user/create', Actions\User::class@create);
 
-Route::get('user/detail', Actions\User::class@detail);
+Route::get('user/{id}/detail', Actions\User::class@detail);
 
-Route::put('user/update', Actions\User::class@update);
+Route::put('user/{id}/update', Actions\User::class@update);
 
 Route::delete('user/{$id}/delete', Actions\User::class@delete);
 

@@ -20,7 +20,7 @@ class Boot extends Core
 								//
 							];
 	/**
-	 * Middleware classes needs to be processed before reaching the Controller
+	 * Middleware classes needs to be processed before reaching the Action
 	 * @var array
 	 */
 	protected $middlewares = [

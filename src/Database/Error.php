@@ -3,12 +3,21 @@
 namespace PHPattern\Database;
 
 use PDOException;
+use PHPattern\Config;
 
 class Error
 {
 	public static function response()
 	{
-		render_response(response()->setCode(500)->json('MySQL Error Occured'));
+		$response = response()->setCode(500);
+		if(Config::get('app.response_type') == 'html')
+        {
+            render_response($response->view('errors.mysql'));
+        }
+        else
+        {
+            render_response($response->json('MySQL Error Occured'));
+        }
 	}
 
 	public static function log($message)

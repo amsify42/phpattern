@@ -14,6 +14,7 @@ class Init extends Boot
 		 */
 		define('DS', DIRECTORY_SEPARATOR);
 		define('APP_PATH', __DIR__);
+		define('ROOT_PATH', APP_PATH.DS.'..');
 		/**
 		 * Auto include php files
 		 */

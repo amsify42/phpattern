@@ -3,6 +3,7 @@
 namespace PHPattern;
 
 use SimpleXMLElement;
+use PHPattern\Config;
 
 class Response
 {
@@ -110,6 +111,13 @@ class Response
 
 	public function validationErrors($errors=[], $message='Validation errors occured')
 	{
-		return $this->setCode(400)->json($message, false, [], [], $errors);
+		if(Config::get('app.response_type') == 'html')
+        {
+            return $this->setCode(400)->view('errors.validation', $errors);
+        }
+        else
+        {
+            return $this->setCode(400)->json($message, false, [], [], $errors);
+        }
 	}
 }
