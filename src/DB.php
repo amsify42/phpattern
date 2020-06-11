@@ -10,6 +10,8 @@ class DB
 {
 	const NOW = 'NOW()';
 	const LOCK_WAIT_TIMEOUT = "SQLSTATE[HY000]: General error: 1205 Lock wait timeout exceeded; try restarting transaction";
+	const SQL_AND = ' AND ';
+    const SQL_OR  = ' OR ';
 
 	public static function query($query, $type='', $env='')
 	{

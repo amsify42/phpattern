@@ -28,7 +28,9 @@ class User extends Action
 	{
 		//$result = UserModel::find(['name' => 'roohi begum'])->first();
 		//$result = UserModel::where('name', 'roohi begum')->first();
-		$result = UserModel::select(['*'])->orderBy('name', 'DESC')->all();
+		//$result = UserModel::select('id, name')->orderBy('name', 'DESC')->all();
+		//$result = UserModel::where('id', 1)->count('id');
+		$result = UserModel::whereRaw("DATE(created_at)='2020-02-20'")->andRaw("IFNULL(image, '')!=''")->orRaw('YEAR(created_at)=2019')->and(['col1' => 'val1', 'col2' => ['1','2']])->or(['id' => '1', [' OR ' => ['name' => 'sami']], ['some' => 'value']])->or('updated_at', 'val')->and('created_at', 'some')->query();
 		return response()->json('User detail route', true, $result);
 	}
 

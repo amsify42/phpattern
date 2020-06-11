@@ -17,6 +17,9 @@ class QueryBuilder
     private static $query  = NULL;
 
     const DELIMITER  = ',';
+    const SQL_WHERE  = ' WHERE ';
+    const SQL_RAW    = '__raw';
+    const MULTI_COND = '__multi';
 
     public static function getModel()
     {
@@ -36,6 +39,7 @@ class QueryBuilder
     public static function select($cols=['*'])
     {
         self::$type = '';
+        self::$cols = $cols;
         return self::$model;
     }
 
@@ -45,15 +49,72 @@ class QueryBuilder
         return self::$model;
     }
 
-    public static function where($col, $value)
+    public static function where($col, $value=NULL)
     {
-        self::$conds[$col] = $value;
+        return self::setCondition($col, $value);
+    }
+
+    public static function and($col, $value=NULL)
+    {
+        return self::setCondition($col, $value, DB::SQL_AND);
+    }
+
+    public static function or($col, $value=NULL)
+    {
+        return self::setCondition($col, $value, DB::SQL_OR);
+    }
+
+    public static function whereRaw($clauses)
+    {
+        self::$conds[] = [self::SQL_RAW => self::SQL_WHERE.$clauses];
+        return self::$model;
+    }
+
+    public static function andRaw($clause)
+    {
+        self::$conds[] = [self::SQL_RAW => DB::SQL_AND.$clause];
+        return self::$model;
+    }
+
+    public static function orRaw($clause)
+    {
+        self::$conds[] = [self::SQL_RAW => DB::SQL_OR.$clause];
+        return self::$model;
+    }
+
+    private static function setCondition($col, $value, $conj=NULL)
+    {
+        if(is_array($col))
+        {
+            self::$conds[] = [self::MULTI_COND => $col, 'conj' => $conj];
+        }
+        else
+        {
+            if($conj && $conj == DB::SQL_OR)
+            {
+                self::$conds[] = [
+                            'conj' => $conj,
+                            'col'  => $col,
+                            'val'  => $value
+                        ];        
+            }
+            else
+            {
+                self::$conds[$col] = $value;
+            }
+        }
         return self::$model;
     }
 
     public static function whereIn($col, $value)
     {
         self::$conds[$col] = is_array($value)? $value: [$value];
+        return self::$model;
+    }
+
+    public static function like($col, $value)
+    {
+        self::$conds[$col] = $value;
         return self::$model;
     }
 
@@ -94,6 +155,14 @@ class QueryBuilder
         return isset($result[0])? $result[0]: NULL;
     }
 
+    public static function count($col='')
+    {
+        $el = ($col == 'id')? 'id': 1;
+        self::$cols = "COUNT({$el}) as count";
+        self::buildQuery();
+        return self::execute();
+    }
+
     private function buildQuery()
     {
         if(self::$type == 'insert')
@@ -113,11 +182,11 @@ class QueryBuilder
     private static function prepareInsert()
     {
         self::checkTimestamps();
-        $query  = "INSERT INTO `".self::getTable()."` (";
+        $query  = "INSERT INTO ".self::getTable()." (";
         $values = " VALUES (";
         foreach(self::$data as $column => $value)
         {
-            $query .= "`{$column}`,";
+            $query .= "{$column},";
             if(in_array($column, self::$model->timestampsCols()))
             {
                 $values .= ($value == DB::NOW)? $value: "'".$value."'";
@@ -142,7 +211,7 @@ class QueryBuilder
     private static function prepareUpdate()
     {
         self::checkTimestamps();
-        self::$query = "UPDATE `".self::getTable()."` SET ".self::setValues();
+        self::$query = "UPDATE ".self::getTable()." SET ".self::setValues();
         self::setConditions();
     }
 
@@ -182,7 +251,7 @@ class QueryBuilder
         {
             foreach(self::$data as $column => $value)
             {
-                $query .= "`".self::getTable()."`.`{$column}`=";
+                $query .= "{$column}=";
                 if(in_array($column, self::$model->timestampsCols()))
                 {
                     $query .= ($value == DB::NOW)? $value: "'".$value."'";
@@ -208,52 +277,154 @@ class QueryBuilder
         {
             if(sizeof(self::$conds)> 0)
             {
-                self::$query .= " WHERE ";
+                self::$query .= self::SQL_WHERE;
+                $clauses = '';
                 foreach(self::$conds as $column => $value)
                 {
                     if(is_array($value))
                     {
-                        if(sizeof($value)> 0)
+                        if(isset($value[self::SQL_RAW]))
                         {
-                            self::whereInRaw($column, $value);
+                            if(self::startsWith($value[self::SQL_RAW], self::SQL_WHERE))
+                            {
+                                self::$query = str_replace(self::SQL_WHERE, '', self::$query);
+                            }
+                            $clauses .= $value[self::SQL_RAW];
+                        }
+                        else if(isset($value[self::MULTI_COND]))
+                        {
+                            $clauses .= self::whereChildRaw($value[self::MULTI_COND], $value['conj']);
+                        }
+                        else
+                        {
+                            $col = $column;
+                            $val = $value;
+                            $conj= DB::SQL_AND;
+                            $in  = true;
+                            if(isset($value['conj']))
+                            {
+                                $col = $value['col'];
+                                $val = $value['val'];
+                                $conj= $value['conj'];
+                                if(!is_array($val))
+                                {
+                                    $in = false;
+                                }
+                            }
+                            if($in)
+                            {
+                                $clauses .= self::whereInColVal($col, $val, $conj);
+                            }
+                            else
+                            {
+                                $clauses .= self::whereColVal($col, $val, $conj);
+                            }
                         }
                     }
                     else
                     {
-                        self::whereRaw($column, $value);
+                        $clauses .= self::whereColVal($column, $value);
                     }
                 }
-                self::$query = rtrim(self::$query, " AND ");
+                self::$query .= ltrim($clauses, DB::SQL_AND);
             }
         }
         else if(self::$conds)
         {
-            self::$query .= " WHERE `".self::getTable()."`.`".self::$model->primaryKey()."`=".self::$conds;
+            self::$query .= self::SQL_WHERE.self::$model->primaryKey()."=".self::$conds;
         }
     }
 
-    public static function whereRaw($col, $value)
+    private static function startsWith($haystack, $needle)
     {
+         $length = strlen($needle);
+         return (substr($haystack, 0, $length) === $needle);
+    }
+
+    private static function whereChildRaw($columns, $conj=NULL)
+    {
+        $conds = ''; 
+        if(sizeof($columns))
+        {
+            foreach($columns as $column => $value)
+            {
+                if(is_array($value))
+                {
+                    $col = $column;
+                    $val = $value;
+                    $conj= DB::SQL_AND;
+                    $in  = true;
+                    if(isset($value[DB::SQL_OR]))
+                    {
+                        foreach($value[DB::SQL_OR] as $colK => $valK)
+                        {
+                            $col = $colK;
+                            $val = $valK;
+                        }
+                        $conj= DB::SQL_OR;
+                        
+                    }
+                    else if(isset($value['conj']))
+                    {
+                        $col = $value['col'];
+                        $val = $value['val'];
+                        $conj= $value['conj'];
+                    }
+                    else if(is_numeric($column))
+                    {
+                        foreach($value as $colK => $valK)
+                        {
+                            $col = $colK;
+                            $val = $valK;
+                        }
+                    }
+                    if(!is_array($val))
+                    {
+                        $in = false;
+                    }
+                    if($in)
+                    {
+                        $conds .= self::whereInColVal($col, $val, $conj);
+                    }
+                    else
+                    {
+                        $conds .= self::whereColVal($col, $val, $conj);
+                    }
+                }
+                else
+                {
+                    $conds .= self::whereColVal($column, $value);
+                }
+            }
+        }
+        return (($conj)? $conj: '').'('.ltrim($conds, DB::SQL_AND).')';
+    }
+
+    public static function whereColVal($col, $value, $conj=NULL)
+    {
+        $query = ($conj)? $conj: DB::SQL_AND;
         if($value === NULL)
         {
-            self::$query .= "`".self::getTable()."`.`{$col}` IS NULL";
+            $query .= "{$col} IS NULL";
         }
         else
         {
-            self::$query .= "`".self::getTable()."`.`{$col}`=";
+            $query .= "{$col}=";
             if(is_string($value))
             {
-                self::$query .= "'".addslashes($value)."' AND ";
+                $query .= "'".addslashes($value)."'";
             }
             else
             {
-                self::$query .= $value." AND ";
+                $query .= $value;
             }
         }
+        return $query;
     }
 
-    public static function whereInRaw($col, $items)
+    public static function whereInColVal($col, $items, $conj=NULL)
     {
+        $query      = ($conj)? $conj: DB::SQL_AND;
         $inElements = '';
         foreach($items as $item)
         {
@@ -268,12 +439,12 @@ class QueryBuilder
             $inElements .= self::DELIMITER;
         }
         $inElements  = rtrim($inElements, self::DELIMITER);
-        self::$query .= "`".self::getTable()."`.`{$col}` IN ({$inElements}) AND ";
+        return $query."{$col} IN ({$inElements})";
     }
 
     private static function prepareSelect()
     {
-        self::$query = "SELECT ".self::selectColumns()." FROM `".self::getTable()."`";
+        self::$query = "SELECT ".self::selectColumns()." FROM ".self::getTable()." ";
         self::setConditions();
         self::setOrder();
         self::setHaving();
@@ -282,18 +453,24 @@ class QueryBuilder
 
     public static function selectColumns()
     {
-        self::$cols = is_string(self::$cols)? explode(',', self::$cols): self::$cols; 
-        $query = '';
-        foreach(self::$cols as $col)
+        if(is_string(self::$cols))
         {
-            if($col == '*')
-            {
-                $query .= '*';
-                break; 
-            }
-            $query .= "`".self::getTable()."`.`{$col}`".self::DELIMITER;
+            return self::$cols;
         }
-        return rtrim($query, self::DELIMITER);
+        else
+        {
+            $query = '';
+            foreach(self::$cols as $col)
+            {
+                if($col == '*')
+                {
+                    $query .= '*';
+                    break; 
+                }
+                $query .= "{$col}".self::DELIMITER;
+            }
+            return rtrim($query, self::DELIMITER);    
+        }
     }
 
     private static function checkTimestamps()
@@ -312,6 +489,12 @@ class QueryBuilder
                 }
             }
         }
+    }
+
+    public static function query()
+    {
+        self::buildQuery();
+        return self::$query;
     }
 
     private static function execute()
