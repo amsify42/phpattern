@@ -12,7 +12,8 @@ class QueryBuilder
     private static $cols   = ['*'];
     private static $conds  = [];
     private static $order  = [];
-    private static $havings= [];
+    private static $group  = NULL;
+    private static $having = NULL;
     private static $limit  = NULL;
     private static $query  = NULL;
 
@@ -33,7 +34,7 @@ class QueryBuilder
 
     private static function getTable()
     {
-        return (self::$model)? self::$model->getTable(): NULL;
+        return (self::$model)? self::$model->table(): NULL;
     }
 
     public static function select($cols=['*'])
@@ -121,6 +122,24 @@ class QueryBuilder
     public static function orderBy($col, $order='ASC')
     {
         self::$order[$col] = $order;
+        return self::$model;
+    }
+
+    public static function groupBy($col)
+    {
+        self::$group = $col;
+        return self::$model;
+    }
+
+    public static function having($havings)
+    {
+        self::$having = $havings;
+        return self::$model;
+    }
+
+    public static function limit($limit)
+    {
+        self::$limit = $limit;
         return self::$model;
     }
 
@@ -219,7 +238,7 @@ class QueryBuilder
     {
         if(!empty(self::$order))
         {
-            self::$query .= "ORDER BY";
+            self::$query .= " ORDER BY";
             foreach(self::$order as $col => $order)
             {
                 self::$query .= " ".$col." ".$order.self::DELIMITER;
@@ -228,11 +247,27 @@ class QueryBuilder
         }
     }
 
+    private static function setGroupBy()
+    {
+        if(self::$group)
+        {
+            self::$query .= "GROUP BY ";
+            if(is_array(self::$group))
+            {
+                self::$query .= implode(',', self::$group);
+            }
+            else
+            {
+                self::$query .= self::$group;
+            }
+        }
+    }
+
     private static function setHaving()
     {
-        if(!empty(self::$havings))
+        if(self::$having)
         {
-            
+            self::$query .= " HAVING ".self::$having;
         }
     }
 
@@ -446,8 +481,9 @@ class QueryBuilder
     {
         self::$query = "SELECT ".self::selectColumns()." FROM ".self::getTable()." ";
         self::setConditions();
-        self::setOrder();
+        self::setGroupBy();
         self::setHaving();
+        self::setOrder();
         self::setLimit();
     }
 
@@ -499,7 +535,7 @@ class QueryBuilder
 
     private static function execute()
     {
-        $result = DB::query(self::$query, self::$type);
+        $result = DB::query(self::$query, self::$type, '', self::$model->fetchObj(), (self::$model->isORM())? get_class(self::$model): '');
         self::reset();
         return $result;
     }

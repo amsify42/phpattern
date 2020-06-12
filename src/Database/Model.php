@@ -13,6 +13,8 @@ class Model
     protected $timestamps   = false;
     protected $pageLimit    = 10;
 
+    protected $fetchObj     = true;
+    protected $isORM        = true;
     private $timestampsCols = ['created_at', 'updated_at'];
 
     function __construct()
@@ -34,6 +36,10 @@ class Model
         if(is_callable([QueryBuilder::class, $name]))
         {
             return call_user_func_array([QueryBuilder::class, $name], $args);
+        }
+        else if(isset($this->{$name}))
+        {
+            return $this->{$name};
         }
     }
 
@@ -76,25 +82,5 @@ class Model
     {
         $this->pageLimit = $pageLimit;
         return $this;
-    }
-
-    public function getTable()
-    {
-        return $this->table;
-    }
-
-    public function primaryKey()
-    {
-        return $this->primaryKey;
-    }
-
-    public function timestamps()
-    {
-        return $this->timestamps;
-    }
-
-    public function timestampsCols()
-    {
-        return $this->timestampsCols;
     }
 }

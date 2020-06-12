@@ -13,7 +13,7 @@ class DB
 	const SQL_AND = ' AND ';
     const SQL_OR  = ' OR ';
 
-	public static function query($query, $type='', $env='')
+	public static function query($query, $type='', $env='', $isObject=false, $class=NULL)
 	{
 		try 
 		{
@@ -31,7 +31,21 @@ class DB
 			}
 			else
 			{
-				$result = $statement->fetchAll(PDO::FETCH_ASSOC);	
+				if($isObject)
+				{
+					if($class)
+					{
+						$result = $statement->fetchAll(PDO::FETCH_CLASS, $class);
+					}
+					else
+					{
+						$result = $statement->fetchAll(PDO::FETCH_OBJ);
+					}
+				}
+				else
+				{
+					$result = $statement->fetchAll(PDO::FETCH_ASSOC);
+				}
 			}
 			$statement->closeCursor();
 			$statement = NULL;
