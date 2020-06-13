@@ -8,14 +8,14 @@ use PHPattern\Database\QueryBuilder;
 
 class Model
 {
-    protected $table        = '';
-    protected $primaryKey   = 'id';
-    protected $timestamps   = false;
-    protected $pageLimit    = 10;
+    protected $table          = '';
+    protected $primaryKey     = 'id';
+    protected $timestamps     = false;
+    protected $pageLimit      = 10;
 
-    protected $fetchObj     = true;
-    protected $isORM        = true;
-    private $timestampsCols = ['created_at', 'updated_at'];
+    protected $fetchObj       = true;
+    protected $isORM          = true;
+    protected $timestampsCols = ['created_at', 'updated_at'];
 
     function __construct()
     {
@@ -67,20 +67,55 @@ class Model
         return $this;
     }
 
+    public function getTable()
+    {
+        return $this->table;
+    }
+
     public function setPrimaryKey($key = 'id')
     {
         $this->primaryKey = $key;
     }
 
-    public function setTimestamps($timestamps)
+    public function getPrimaryKey()
+    {
+        return $this->primaryKey;
+    }
+
+    public function setTimestamps($is=true)
     {
         $this->timestamps = $timestamps;
         return $this;
+    }
+
+    public function isTimestamps()
+    {
+        return $this->timestamps;
     }
 
     public function setPageLimit($pageLimit=10)
     {
         $this->pageLimit = $pageLimit;
         return $this;
+    }
+
+    public function getPageLimit()
+    {
+        return $this->pageLimit;
+    }
+
+    public function getTimestampsCols()
+    {
+        return $this->timestampsCols;
+    }
+
+    public function isFetchObj()
+    {
+        return $this->fetchObj;
+    }
+
+     public function isORM()
+    {
+        return $this->isORM;
     }
 }
