@@ -26,17 +26,7 @@ class User extends Action
 
 	public function detail($id)
 	{
-		//$result = UserModel::all();
-		//$result = UserModel::select('id, name')->orderBy('id', 'DESC')->all();
-		//$result = UserModel::find(['name' => 'roohi begum'])->first();
-		//$result = UserModel::where('name', 'roohi begum')->first();
-		//$result = UserModel::where('id', 1)->count('id');
-		//$result = UserModel::whereRaw("DATE(created_at)='2020-02-20'")->andRaw("IFNULL(image, '')!=''")->orRaw('YEAR(created_at)=2019')->and(['col1' => 'val1', 'col2' => ['1','2']])->or(['id' => '1', [' OR ' => ['name' => 'sami']], ['some' => 'value']])->or('updated_at', 'val')->and('created_at', 'some')->query();
-		//$result = UserModel::select('COUNT(id) as count, id, name')->orderBy('id', 'DESC')->groupBy('id')->having('count > 0')->limit(5)->query();
-		$result = UserModel::select('COUNT(id) as count, id, name')->orderBy('id', 'DESC')->groupBy('id')->having(['count', '>', 0])->limit(5)->query();
-		//$result = UserModel::where('name', 'Mohammad Samiullah')->all();
-		dd($result);
-		return response()->json('User detail route', true, $result);
+		return response()->json('User detail route', true, ['id' => $id]);
 	}
 
 	public function update($id)

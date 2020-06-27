@@ -15,10 +15,11 @@ class QueryBuilder
     private static $group  = NULL;
     private static $having = NULL;
     private static $limit  = NULL;
+    private static $offset = NULL;
     private static $query  = NULL;
 
     const DELIMITER  = ',';
-    const SQL_WHERE  = ' WHERE ';
+    const SQL_WHERE  = 'WHERE ';
     const SQL_RAW    = '__raw';
     const MULTI_COND = '__multi';
     const DEFAULT_OP = '='; 
@@ -152,9 +153,19 @@ class QueryBuilder
         return self::$model;
     }
 
-    public static function limit($limit)
+    public static function limit($limit, $offset=NULL)
     {
         self::$limit = $limit;
+        if($offset)
+        {
+            self::offset($offset);
+        }
+        return self::$model;
+    }
+
+    public static function offset($offset)
+    {
+        self::$offset = $offset;
         return self::$model;
     }
 
@@ -197,6 +208,17 @@ class QueryBuilder
         return self::execute();
     }
 
+    public static function paginate($limit, $page=1)
+    {
+        if(!self::$limit)
+        {
+            self::$limit = $limit;
+        }
+        self::$offset = ($page-1)*self::$limit;
+        self::buildQuery();
+        return self::execute();
+    }
+
     private function buildQuery($val='')
     {
         if(self::$type == 'insert')
@@ -211,6 +233,7 @@ class QueryBuilder
         {
             self::prepareSelect($val);
         }
+        self::$query = trim(self::$query);
     }
 
     private static function prepareInsert()
@@ -266,7 +289,7 @@ class QueryBuilder
     {
         if(self::$group)
         {
-            self::$query .= "GROUP BY ";
+            self::$query .= " GROUP BY ";
             if(is_array(self::$group))
             {
                 self::$query .= implode(',', self::$group);
@@ -300,22 +323,22 @@ class QueryBuilder
                             $op    = $value[1];
                             $val   = isset($value[2])? $value[2]: '';
                             $isVal = ($val || $val == '0')? true: false; 
-                            $query .= $alias.($isVal? $op: self::DEFAULT_OP).($isVal? $val: $op).self::DELIMITER;
+                            $query .= $alias.($isVal? $op: self::DEFAULT_OP).($isVal? $val: $op).DB::SQL_AND;
                         }
                         else
                         {
                             $isOne = true;
-                            $query .= $value;   
+                            $query .= $value;
                         }
                     }
                     else
                     {
-                        $query .= $col.self::DEFAULT_OP.$value.self::DELIMITER;
+                        $query .= $col.self::DEFAULT_OP.$value.DB::SQL_AND;
                     }
                 }
                 if(!$isOne)
                 {
-                    $query .= rtrim($query, self::DELIMITER);
+                    $query = rtrim($query, DB::SQL_AND);
                 }
             }
             else
@@ -331,6 +354,10 @@ class QueryBuilder
         if(self::$limit)
         {
             self::$query .= " LIMIT ".self::$limit;
+        }
+        if(self::$offset)
+        {
+            self::$query .= " OFFSET ".self::$offset;
         }
     }
 
@@ -611,13 +638,16 @@ class QueryBuilder
         return $result;
     }
 
-    private static function reset()
+    public static function reset()
     {
         self::$type   = '';
         self::$cols   = ['*'];
         self::$conds  = [];
         self::$order  = [];
+        self::$group  = NULL;
+        self::$having = NULL;
         self::$limit  = NULL;
+        self::$offset = NULL;
         self::$query  = NULL;
     }
 }
