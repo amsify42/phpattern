@@ -7,6 +7,20 @@ use App\Models\User;
 
 final class QueryBuilderTest extends TestCase
 {
+
+    function __construct()
+    {
+        if(!defined('DS'))
+        {
+            define('DS', DIRECTORY_SEPARATOR);
+        }
+        if(!defined('ROOT_PATH'))
+        {
+            define('ROOT_PATH', __DIR__.DS.'..');
+        }
+        parent::__construct();
+    }
+
     public function testSelectAll()
     {
         $query = User::select()->query();
@@ -52,11 +66,8 @@ final class QueryBuilderTest extends TestCase
 
     public function testPaginate()
     {
-        $model = User::select('*')->paginate(10);
-        var_dump($model); die;
-        // $query = $model->query();
-        // $model->reset();
-        // $this->assertEquals("SELECT * FROM user LIMIT 10 OFFSET 0", $query);
+        $results = User::select('*')->paginate(10);
+        $this->assertIsArray($results);
     }
 
     public function remaining()

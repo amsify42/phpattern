@@ -11,7 +11,7 @@ final class SimpleTest extends TestCase
         /**
          * Initiating Application
          */
-        $init = new \Tests\Init();
+        $init = new \App\Init();
         /**
          * Acquiring request and rendering the response
          */

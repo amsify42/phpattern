@@ -1,3 +1,2 @@
-Current:
-1. Conf
-2. DB Connection and Query
+Pending:
+1. Joins in query builder

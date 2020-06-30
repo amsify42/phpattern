@@ -41,33 +41,33 @@ class Request
 
 	public static function isGet()
 	{
-		return ($_SERVER['REQUEST_METHOD'] === 'GET');
+		return (!self::isCLI() && $_SERVER['REQUEST_METHOD'] === 'GET');
 	}
 
 	public static function isPost()
 	{
-		return ($_SERVER['REQUEST_METHOD'] === 'POST');
+		return (!self::isCLI() && $_SERVER['REQUEST_METHOD'] === 'POST');
 	}
 
 	public static function isPut()
 	{
-		return ($_SERVER['REQUEST_METHOD'] === 'PUT');
+		return (!self::isCLI() && $_SERVER['REQUEST_METHOD'] === 'PUT');
 	}
 
 	public static function isDelete()
 	{
-		return ($_SERVER['REQUEST_METHOD'] === 'DELETE');
+		return (!self::isCLI() && $_SERVER['REQUEST_METHOD'] === 'DELETE');
 	}
 
 	public static function isRequest($type)
 	{
 		if(is_array($type))
 		{
-			return (in_array($_SERVER['REQUEST_METHOD'], strtoupper($type)));
+			return (!self::isCLI() && in_array($_SERVER['REQUEST_METHOD'], strtoupper($type)));
 		}
 		else
 		{
-			return ($_SERVER['REQUEST_METHOD'] === strtoupper($type));
+			return (!self::isCLI() && $_SERVER['REQUEST_METHOD'] === strtoupper($type));
 		}
 	}
 }

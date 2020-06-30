@@ -208,12 +208,19 @@ class QueryBuilder
         return self::execute();
     }
 
-    public static function paginate($limit, $page=1)
+    public static function paginate($limit, $page=NULL)
     {
         if(!self::$limit)
         {
             self::$limit = $limit;
         }
+
+        $page = ($page !== NULL)? $page: \PHPattern\Request::get('page');
+        if(!$page)
+        {
+            $page = 1;
+        }
+
         self::$offset = ($page-1)*self::$limit;
         self::buildQuery();
         return self::execute();
