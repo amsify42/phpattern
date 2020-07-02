@@ -12,6 +12,8 @@ class QueryBuilder
     private static $cols   = ['*'];
     private static $conds  = [];
     private static $order  = [];
+    private static $join   = [];
+    private static $actJTab= '';
     private static $group  = NULL;
     private static $having = NULL;
     private static $limit  = NULL;
@@ -132,6 +134,42 @@ class QueryBuilder
     public static function like($col, $value)
     {
         self::$conds[$col] = $value;
+        return self::$model;
+    }
+
+    public static function join($table, $alias=NULL)
+    {
+        self::$actJTab      = $table;
+        self::$join[$table] = ($alias)? ['alias' => $alias]: [];
+        return self::$model;
+    }
+
+    public static function on($x, $op='=', $y=NULL)
+    {
+        if(self::$actJTab)
+        {
+            if(!isset(self::$join[self::$actJTab]['conds']))
+            {
+                self::$join[self::$actJTab]['conds'] = [];   
+            }
+
+            if(is_array($x))
+            {
+                foreach($x as $xk => $cond)
+                {
+                    self::$join[self::$actJTab]['conds'][$xk] = $cond;
+                }
+            }
+            else
+            {
+                $condition = $x;
+                if($y)
+                {
+                    $condition = $x.$op.$y;
+                }
+                self::$join[self::$actJTab]['conds'][] = $condition;   
+            }
+        }
         return self::$model;
     }
 
@@ -395,6 +433,35 @@ class QueryBuilder
         return $query;
     }
 
+    private static function setJoin()
+    {
+        if(sizeof(self::$join)> 0)
+        {
+            $i = 0;
+            foreach(self::$join as $table => $tjoin)
+            {
+                $query = (($i)?" JOIN ":"JOIN ").$table." ON ";
+                if(sizeof($tjoin['conds']) > 0)
+                {
+                    foreach($tjoin['conds'] as $ck => $cond)
+                    {
+                        if(is_numeric($ck))
+                        {
+                            $query .= $cond.DB::SQL_AND;
+                        }
+                        else
+                        {
+                            $query .= $ck."=".$cond.DB::SQL_AND;   
+                        }
+                    }
+                    $query = rtrim($query, DB::SQL_AND);
+                }
+                self::$query .= $query;
+                $i++;
+            }
+        }
+    }
+
     private static function setConditions()
     {
         if(is_array(self::$conds))
@@ -585,6 +652,7 @@ class QueryBuilder
         {
             self::$conds[self::$model->getPrimaryKey()] = $val;
         }
+        self::setJoin();
         self::setConditions();
         self::setGroupBy();
         self::setHaving();
@@ -649,6 +717,7 @@ class QueryBuilder
     {
         self::$type   = '';
         self::$cols   = ['*'];
+        self::$join   = [];
         self::$conds  = [];
         self::$order  = [];
         self::$group  = NULL;

@@ -21,53 +21,81 @@ final class QueryBuilderTest extends TestCase
         parent::__construct();
     }
 
-    public function testSelectAll()
-    {
-        $query = User::select()->query();
-        $this->assertEquals('SELECT * FROM user', $query);
-    }
+    // public function testSelectAll()
+    // {
+    //     $query = User::select()->query();
+    //     $this->assertEquals('SELECT * FROM user', $query);
+    // }
 
-    public function testConditions()
+    // public function testConditions()
+    // {
+    //     $model = User::select(['id', 'name'])->where('name', 'sami');
+    //     $query = $model->query();
+    //     $model->reset();
+    //     $this->assertEquals("SELECT id,name FROM user WHERE name='sami'", $query);
+    // }
+
+    // public function testOrderBy()
+    // {
+    //     $model = User::select(['id', 'name'])->where('name', 'sami')->orderBy('id', 'DESC');
+    //     $query = $model->query();
+    //     $model->reset();
+    //     $this->assertEquals("SELECT id,name FROM user WHERE name='sami' ORDER BY id DESC", $query);
+    // }
+
+    // public function testGroupBy()
+    // {
+    //     $model = User::select(['id', 'name'])->where('name', 'sami')->groupBy('id');
+    //     $query = $model->query();
+    //     $model->reset();
+    //     $this->assertEquals("SELECT id,name FROM user WHERE name='sami' GROUP BY id", $query);
+    // }
+
+    // public function testHaving()
+    // {
+    //     $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having(['count', '>', 10]);
+    //     $query = $model->query();
+    //     $model->reset();
+    //     $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>10", $query);
+
+    //     $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having([['count', '>', 0],['count', '<', 10]]);
+    //     $query = $model->query();
+    //     $model->reset();
+    //     $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>0 AND count<10", $query);
+    // }
+
+    // public function testPaginate()
+    // {
+    //     $results = User::select('*')->paginate(10);
+    //     $this->assertIsArray($results);
+    // }
+
+    public function testJoin()
     {
-        $model = User::select(['id', 'name'])->where('name', 'sami');
+        $model = User::select('*')->join('student')->on('user.id=student.user_id');
         $query = $model->query();
         $model->reset();
-        $this->assertEquals("SELECT id,name FROM user WHERE name='sami'", $query);
-    }
+        $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id', $query);
 
-    public function testOrderBy()
-    {
-        $model = User::select(['id', 'name'])->where('name', 'sami')->orderBy('id', 'DESC');
+        $model = User::select('*')->join('student')->on('user.id', '=', 'student.user_id');
         $query = $model->query();
         $model->reset();
-        $this->assertEquals("SELECT id,name FROM user WHERE name='sami' ORDER BY id DESC", $query);
-    }
+        $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id', $query);
 
-    public function testGroupBy()
-    {
-        $model = User::select(['id', 'name'])->where('name', 'sami')->groupBy('id');
+        $model = User::select('*')->join('student')->on(['user.id' => 'student.user_id']);
         $query = $model->query();
         $model->reset();
-        $this->assertEquals("SELECT id,name FROM user WHERE name='sami' GROUP BY id", $query);
-    }
+        $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id', $query);
 
-    public function testHaving()
-    {
-        $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having(['count', '>', 10]);
+        $model = User::select('*')->join('student')->on(['user.id' => 'student.user_id', 'user.active' => 'student.active']);
         $query = $model->query();
         $model->reset();
-        $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>10", $query);
+        $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id AND user.active=student.active', $query);
 
-        $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having([['count', '>', 0],['count', '<', 10]]);
+        $model = User::select('*')->join('student')->on('user.id', '=', 'student.user_id')->join('user_student')->on('user.id', '=', 'user_student.user_id');
         $query = $model->query();
         $model->reset();
-        $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>0 AND count<10", $query);
-    }
-
-    public function testPaginate()
-    {
-        $results = User::select('*')->paginate(10);
-        $this->assertIsArray($results);
+        $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id JOIN user_student ON user.id=user_student.user_id', $query);
     }
 
     public function remaining()
