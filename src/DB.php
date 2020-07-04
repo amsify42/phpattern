@@ -23,11 +23,11 @@ class DB
 			$result 	= '';
 			if($type == 'insert')
 			{
-				$result = $connection->lastInsertId();
+				$result = (int)$connection->lastInsertId();
 			}
-			else if($type == 'update')
+			else if($type == 'update' || $type == 'delete')
 			{
-				$result = $statement->rowCount();
+				$result = (int)$statement->rowCount();
 			}
 			else
 			{

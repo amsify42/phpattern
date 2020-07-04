@@ -4,71 +4,131 @@ namespace Amsify42\Tests;
 
 use PHPUnit\Framework\TestCase;
 use App\Models\User;
+use PHPattern\DB;
 
 final class QueryBuilderTest extends TestCase
 {
-
     function __construct()
     {
         if(!defined('DS'))
         {
             define('DS', DIRECTORY_SEPARATOR);
         }
+        if(!defined('APP_PATH'))
+        {
+            define('APP_PATH', __DIR__.DS.'..'.DS.'app');
+        }
         if(!defined('ROOT_PATH'))
         {
-            define('ROOT_PATH', __DIR__.DS.'..');
+            define('ROOT_PATH', APP_PATH.DS.'..');
         }
         parent::__construct();
     }
 
-    // public function testSelectAll()
-    // {
-    //     $query = User::select()->query();
-    //     $this->assertEquals('SELECT * FROM user', $query);
-    // }
+    public function testInsertUpdateDelete()
+    {
+        $insertId = User::insert(['name' => 'Test name']);
+        $this->assertIsInt($insertId);
 
-    // public function testConditions()
-    // {
-    //     $model = User::select(['id', 'name'])->where('name', 'sami');
-    //     $query = $model->query();
-    //     $model->reset();
-    //     $this->assertEquals("SELECT id,name FROM user WHERE name='sami'", $query);
-    // }
+        $this->idTestUpdate($insertId);
+        $this->idTestDelete($insertId);
+    }
 
-    // public function testOrderBy()
-    // {
-    //     $model = User::select(['id', 'name'])->where('name', 'sami')->orderBy('id', 'DESC');
-    //     $query = $model->query();
-    //     $model->reset();
-    //     $this->assertEquals("SELECT id,name FROM user WHERE name='sami' ORDER BY id DESC", $query);
-    // }
+    private function idTestUpdate($id)
+    {
+        $effected = User::update(['name' => 'Test name edited'], $id);
+        $this->assertEquals(1, $effected);
 
-    // public function testGroupBy()
-    // {
-    //     $model = User::select(['id', 'name'])->where('name', 'sami')->groupBy('id');
-    //     $query = $model->query();
-    //     $model->reset();
-    //     $this->assertEquals("SELECT id,name FROM user WHERE name='sami' GROUP BY id", $query);
-    // }
+        $effected = User::update(['name' => 'Test name edited 2'], ['name' => 'Test name edited']);
+        $this->assertEquals(1, $effected);
+    }
 
-    // public function testHaving()
-    // {
-    //     $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having(['count', '>', 10]);
-    //     $query = $model->query();
-    //     $model->reset();
-    //     $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>10", $query);
+    private function idTestDelete($id)
+    {
+        $effected = User::delete($id);
+        $this->assertEquals(1, $effected);
 
-    //     $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having([['count', '>', 0],['count', '<', 10]]);
-    //     $query = $model->query();
-    //     $model->reset();
-    //     $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>0 AND count<10", $query);
-    // }
+        $effected = User::delete(['name' => 'Test name edited 2']);
+        $this->assertEquals(0, $effected);
+    }
 
-    // public function testPaginate()
-    // {
-    //     $results = User::select('*')->paginate(10);
-    //     $this->assertIsArray($results);
-    // }
+    public function testSelectAll()
+    {
+        $results = User::all();
+        $this->assertIsArray($results);
+
+        $query = User::select()->query();
+        $this->assertEquals('SELECT * FROM user', $query);
+    }
+
+    public function testConditions()
+    {
+        $model = User::select('id, name')->where('name', 'sami');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT id, name FROM user WHERE name='sami'", $query);
+
+        $model = User::select('id, name')->where('name', 'sami')->and('id', 1);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT id, name FROM user WHERE name='sami' AND id=1", $query);
+    }
+
+    public function testOrderBy()
+    {
+        $model = User::select(['id', 'name'])->where('name', 'sami')->orderBy('id', 'DESC');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT id,name FROM user WHERE name='sami' ORDER BY id DESC", $query);
+    }
+
+    public function testGroupBy()
+    {
+        $model = User::select(['id', 'name'])->where('name', 'sami')->groupBy('id');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT id,name FROM user WHERE name='sami' GROUP BY id", $query);
+    }
+
+    public function testHaving()
+    {
+        $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having(['count', '>', 10]);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>10", $query);
+
+        $model = User::select('COUNT(1) AS count')->where('name', 'sami')->having([['count', '>', 0],['count', '<', 10]]);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT COUNT(1) AS count FROM user WHERE name='sami' HAVING count>0 AND count<10", $query);
+    }
+
+    public function testRaw()
+    {
+        $model = User::where("DATE(created_at)='2020-02-20'")->and("IFNULL(image, '')!=''")->or('YEAR(created_at)=2019')->and(['col1' => 'val1', 'col2' => ['1','2']])->or(['id' => '1', [DB::SQL_OR => ['name' => 'sami']], ['some' => 'value']])->or('updated_at', 'val')->and('created_at', 'some');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT * FROM user WHERE DATE(created_at)='2020-02-20' AND IFNULL(image, '')!='' OR YEAR(created_at)=2019 AND (col1='val1' AND col2 IN('1','2')) OR (id='1' OR name='sami' AND some='value') OR updated_at='val' AND created_at='some'", $query);
+    }
+
+    public function testLimit()
+    {
+        $model = User::select('COUNT(id) as count, id, name')->orderBy('id', 'DESC')->groupBy('id')->limit(5);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT COUNT(id) as count, id, name FROM user GROUP BY id ORDER BY id DESC LIMIT 5", $query);
+
+        $model = User::select('*')->groupBy('id')->limit(10, 10);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT * FROM user GROUP BY id LIMIT 10 OFFSET 10", $query);
+    }
+
+    public function testPaginate()
+    {
+        $results = User::select('*')->paginate(10);
+        $this->assertIsArray($results);
+    }
 
     public function testJoin()
     {
@@ -87,6 +147,11 @@ final class QueryBuilderTest extends TestCase
         $model->reset();
         $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id', $query);
 
+        $model = User::select('*')->join('student')->on(['user.id' => 'student.user_id', 'student.name' => 1]);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id AND student.name=1', $query);
+
         $model = User::select('*')->join('student')->on(['user.id' => 'student.user_id', 'user.active' => 'student.active']);
         $query = $model->query();
         $model->reset();
@@ -96,18 +161,5 @@ final class QueryBuilderTest extends TestCase
         $query = $model->query();
         $model->reset();
         $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id JOIN user_student ON user.id=user_student.user_id', $query);
-    }
-
-    public function remaining()
-    {
-        //$result = UserModel::all();
-        //$result = UserModel::select('id, name')->orderBy('id', 'DESC')->all();
-        //$result = UserModel::find(['name' => 'roohi begum'])->first();
-        //$result = UserModel::where('name', 'roohi begum')->first();
-        //$result = UserModel::where('id', 1)->count('id');
-        //$result = UserModel::whereRaw("DATE(created_at)='2020-02-20'")->andRaw("IFNULL(image, '')!=''")->orRaw('YEAR(created_at)=2019')->and(['col1' => 'val1', 'col2' => ['1','2']])->or(['id' => '1', [' OR ' => ['name' => 'sami']], ['some' => 'value']])->or('updated_at', 'val')->and('created_at', 'some')->query();
-        //$result = UserModel::select('COUNT(id) as count, id, name')->orderBy('id', 'DESC')->groupBy('id')->having('count > 0')->limit(5)->query();
-        //$result = UserModel::select('COUNT(id) as count, id, name')->orderBy('id', 'DESC')->groupBy('id')->having(['count', '>', 0])->limit(5)->query();
-        //$result = UserModel::where('name', 'Mohammad Samiullah')->all();
     }
 }

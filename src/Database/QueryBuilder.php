@@ -69,24 +69,6 @@ class QueryBuilder
         return self::setCondition($col, $op, $value, DB::SQL_OR);
     }
 
-    public static function whereRaw($clauses)
-    {
-        self::$conds[] = [self::SQL_RAW => self::SQL_WHERE.$clauses];
-        return self::$model;
-    }
-
-    public static function andRaw($clause)
-    {
-        self::$conds[] = [self::SQL_RAW => DB::SQL_AND.$clause];
-        return self::$model;
-    }
-
-    public static function orRaw($clause)
-    {
-        self::$conds[] = [self::SQL_RAW => DB::SQL_OR.$clause];
-        return self::$model;
-    }
-
     private static function setCondition($col, $op=NULL, $value=NULL, $conj=NULL)
     {
         if(is_array($col))
@@ -118,7 +100,14 @@ class QueryBuilder
                 }
                 else
                 {
-                    self::$conds[$col] = $op;
+                    if($op)
+                    {
+                        self::$conds[$col] = $op;
+                    }
+                    else
+                    {
+                        self::$conds[] = $col;   
+                    }
                 }
             }
         }
@@ -224,6 +213,14 @@ class QueryBuilder
         return self::execute();
     }
 
+    public static function delete($conds=[])
+    {
+        self::$type = 'delete';
+        self::$conds= $conds;
+        self::buildQuery();
+        return self::execute();
+    }
+
     public static function all()
     {
         self::buildQuery();
@@ -274,6 +271,10 @@ class QueryBuilder
         {
             self::prepareUpdate();
         }
+        else if(self::$type == 'delete')
+        {
+            self::prepareDelete();
+        }
         else
         {
             self::prepareSelect($val);
@@ -317,6 +318,13 @@ class QueryBuilder
         self::setConditions();
     }
 
+    private static function prepareDelete()
+    {
+        self::checkTimestamps();
+        self::$query = "DELETE FROM ".self::getTable()." ";
+        self::setConditions();
+    }
+
     private static function setOrder()
     {
         if(!empty(self::$order))
@@ -334,7 +342,7 @@ class QueryBuilder
     {
         if(self::$group)
         {
-            self::$query .= " GROUP BY ";
+            self::$query = trim(self::$query)." GROUP BY ";
             if(is_array(self::$group))
             {
                 self::$query .= implode(',', self::$group);
@@ -443,18 +451,12 @@ class QueryBuilder
                 $query = (($i)?" JOIN ":"JOIN ").$table." ON ";
                 if(sizeof($tjoin['conds']) > 0)
                 {
+                    $clauses = '';
                     foreach($tjoin['conds'] as $ck => $cond)
                     {
-                        if(is_numeric($ck))
-                        {
-                            $query .= $cond.DB::SQL_AND;
-                        }
-                        else
-                        {
-                            $query .= $ck."=".$cond.DB::SQL_AND;   
-                        }
+                        $clauses .= self::clauseToRaw($ck, $cond, true);
                     }
-                    $query = rtrim($query, DB::SQL_AND);
+                    $query .= substr($clauses, strlen(DB::SQL_AND));
                 }
                 self::$query .= $query;
                 $i++;
@@ -472,57 +474,16 @@ class QueryBuilder
                 $clauses = '';
                 foreach(self::$conds as $column => $value)
                 {
-                    if(is_array($value))
+                    if(isset($value[self::MULTI_COND]))
                     {
-                        if(isset($value[self::SQL_RAW]))
-                        {
-                            if(self::startsWith($value[self::SQL_RAW], self::SQL_WHERE))
-                            {
-                                self::$query = str_replace(self::SQL_WHERE, '', self::$query);
-                            }
-                            $clauses .= $value[self::SQL_RAW];
-                        }
-                        else if(isset($value[self::MULTI_COND]))
-                        {
-                            $clauses .= self::whereChildRaw($value[self::MULTI_COND], $value['conj']);
-                        }
-                        else
-                        {
-                            $col = $column;
-                            $op  = self::DEFAULT_OP;
-                            $val = $value;
-                            $conj= DB::SQL_AND;
-                            $in  = true;
-                            if(isset($value['conj']))
-                            {
-                                $col = $value['col'];
-                                $val = $value['val'];
-                                $conj= $value['conj'];
-                                if(!is_array($val))
-                                {
-                                    $in = false;
-                                }
-                            }
-                            if(isset($value['op']))
-                            {
-                                $op = $value['op'];
-                            }
-                            if($in)
-                            {
-                                $clauses .= self::whereInColVal($col, $val, $conj);
-                            }
-                            else
-                            {
-                                $clauses .= self::whereColVal($col, $op, $val, $conj);
-                            }
-                        }
+                        $clauses .= self::conditionsToRaw($value[self::MULTI_COND], $value['conj']);
                     }
                     else
                     {
-                        $clauses .= self::whereColVal($column, self::DEFAULT_OP, $value);
+                        $clauses .= self::clauseToRaw($column, $value);
                     }
                 }
-                self::$query .= ltrim($clauses, DB::SQL_AND);
+                self::$query .= substr($clauses, strlen(DB::SQL_AND));
             }
         }
         else if(self::$conds)
@@ -537,85 +498,94 @@ class QueryBuilder
          return (substr($haystack, 0, $length) === $needle);
     }
 
-    private static function whereChildRaw($columns, $conj=NULL)
+    private static function conditionsToRaw($columns, $conj=NULL)
     {
         $conds = ''; 
         if(sizeof($columns))
         {
             foreach($columns as $column => $value)
             {
-                if(is_array($value))
-                {
-                    $col = $column;
-                    $op  = self::DEFAULT_OP;
-                    $val = $value;
-                    $conj= DB::SQL_AND;
-                    $in  = true;
-                    $isN = false;
-                    if(isset($value[DB::SQL_OR]))
-                    {
-                        foreach($value[DB::SQL_OR] as $colK => $valK)
-                        {
-                            $col = $colK;
-                            $val = $valK;
-                        }
-                        $conj= DB::SQL_OR;
-                        
-                    }
-                    else if(isset($value['conj']))
-                    {
-                        $col = $value['col'];
-                        $val = $value['val'];
-                        $conj= $value['conj'];
-                    }
-                    else if(is_numeric($column))
-                    {
-                        $isN = true;
-                        foreach($value as $colK => $valK)
-                        {
-                            $col = $colK;
-                            $val = $valK;
-                        }
-                    }
-                    if(!$isN && isset($value['op']))
-                    {
-                        $op = $value['op'];
-                    }
-                    if(!is_array($val))
-                    {
-                        $in = false;
-                    }
-                    if($in)
-                    {
-                        $conds .= self::whereInColVal($col, $val, $conj);
-                    }
-                    else
-                    {
-                        $conds .= self::whereColVal($col, $op, $val, $conj);
-                    }
-                }
-                else
-                {
-                    $conds .= self::whereColVal($column, self::DEFAULT_OP, $value);
-                }
+                $conds .= self::clauseToRaw($column, $value);
             }
         }
-        return (($conj)? $conj: '').'('.ltrim($conds, DB::SQL_AND).')';
+        return (($conj)? $conj: '').'('. substr($conds, strlen(DB::SQL_AND)).')';
     }
 
-    public static function whereColVal($col, $op, $value, $conj=NULL)
+    private static function clauseToRaw($column, $value, $isJoin=false)
     {
-        $query = ($conj)? $conj: DB::SQL_AND;
-        if($value === NULL)
+        $clause = '';
+        if(is_array($value))
         {
-            $query .= "{$col} IS NULL";
+            $col = $column;
+            $op  = self::DEFAULT_OP;
+            $val = $value;
+            $conj= DB::SQL_AND;
+            $in  = true;
+            $isN = false;
+            if(isset($value[DB::SQL_OR]))
+            {
+                foreach($value[DB::SQL_OR] as $colK => $valK)
+                {
+                    $col = $colK;
+                    $val = $valK;
+                }
+                $conj= DB::SQL_OR;
+            }
+            else if(isset($value['conj']))
+            {
+                $col = $value['col'];
+                $val = $value['val'];
+                $conj= $value['conj'];
+            }
+            else if(is_numeric($column))
+            {
+                $isN = true;
+                foreach($value as $colK => $valK)
+                {
+                    $col = $colK;
+                    $val = $valK;
+                }
+            }
+            if(!$isN && isset($value['op']))
+            {
+                $op = $value['op'];
+            }
+            if(!is_array($val))
+            {
+                $in = false;
+            }
+            if($in)
+            {
+                $clause .= self::whereInColVal($col, $val, $conj);
+            }
+            else
+            {
+                $clause .= self::whereColVal($col, $op, $val, $conj, $isJoin);
+            }
         }
         else
         {
-            $query .= "{$col}".$op;
+            if(is_numeric($column))
+            {
+                $clause .= DB::SQL_AND.$value;
+            }
+            else
+            {
+                $clause .= self::whereColVal($column, self::DEFAULT_OP, $value, NULL, $isJoin);
+            }
+        }
+        return $clause;
+    }
+
+    public static function whereColVal($col, $op, $value, $conj=NULL, $isJoin=false)
+    {
+        $query = ($conj)? $conj: DB::SQL_AND;
+        $query .= "{$col}".(($value !== NULL)? $op: "");
+        if($value !== NULL)
+        {
             if(is_string($value))
             {
-                $query .= "'".addslashes($value)."'";
+                $query .= ($isJoin && strpos($value, '.') !== false)? $value:"'".addslashes($value)."'";
             }
             else
             {
