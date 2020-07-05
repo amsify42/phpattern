@@ -1,2 +1,4 @@
 Pending:
-1. Joins in query builder
+1. Test join query results.
+2. insert, update, delete with ORM class.
+3. Add relationships in ORM classes

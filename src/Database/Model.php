@@ -3,6 +3,7 @@
 namespace PHPattern\Database;
 
 use ReflectionClass;
+use PHPattern\DB;
 use PHPattern\Database\Tables;
 use PHPattern\Database\QueryBuilder;
 
@@ -31,10 +32,26 @@ class Model
         return class_to_underscore($reflect->getShortName());
     }
 
+    private static function checkTableModel()
+    {
+        $model = Tables::retreiveModel(self::findTable());
+        if(!$model)
+        {
+            $model = new static;
+            Tables::storeModel($model->getTable(), $model);
+        }
+        return $model;
+    }
+
     function __call($name, $args)
     {
+        $model = self::checkTableModel();
         if(is_callable([QueryBuilder::class, $name]))
         {
+            if(QueryBuilder::getModel() != $model)
+            {
+                QueryBuilder::setModel($model);
+            }
             return call_user_func_array([QueryBuilder::class, $name], $args);
         }
         else if(isset($this->{$name}))
@@ -45,12 +62,7 @@ class Model
 
     public static function __callStatic($name, $args)
     {
-        $model = Tables::retreiveModel(self::findTable());
-        if(!$model)
-        {
-            $model = new static;
-            Tables::storeModel($model->getTable(), $model);
-        }
+        $model = self::checkTableModel();
         if(is_callable([QueryBuilder::class, $name]))
         {
             if(QueryBuilder::getModel() != $model)
@@ -114,8 +126,94 @@ class Model
         return $this->fetchObj;
     }
 
-     public function isORM()
+    public function isORM()
     {
         return $this->isORM;
+    }
+
+    public function save()
+    {
+        $props = (new \ReflectionObject($this))->getProperties(\ReflectionProperty::IS_PUBLIC);
+        if(sizeof($props)> 0)
+        {
+            $row = [];
+            foreach($props as $pk => $prop)
+            {
+                $row[$prop->name] = $this->{$prop->name};
+            }
+            if(isset($row[$this->primaryKey]))
+            {
+                $id = $row[$this->primaryKey];
+                unset($row[$this->primaryKey]);
+                $effected = self::update($row, $id);
+                return ($effected > 0)? true: false;
+            }
+            else
+            {
+                $id = self::insert($row);
+                if($id)
+                {
+                    $this->{$this->primaryKey} = $id;
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    public function remove()
+    {
+        if(isset($this->{$this->primaryKey}))
+        {
+            $effected = self::delete($this->{$this->primaryKey});
+            return ($effected > 0)? true: false;
+        }
+        return false;
+    }
+
+    protected function hasMany($fKey, $fSource, $pKey=NULL)
+    {
+        $primaryKey = ($pKey)? $pKey: $this->primaryKey;
+        $pKeyVal    = $this->{$primaryKey};
+        if(class_exists($fSource))
+        {
+            return $fSource::select('*')->where($fKey, $pKeyVal)->all();
+        }
+        else
+        {
+            return DB::query("SELECT * FROM {$fSource} WHERE {$fKey}='{$pKeyVal}'");
+        }
+    }
+
+    protected function hasOne($fKey, $fSource, $pKey=NULL)
+    {
+        return $this->relateOne('hasOne', $pKey, $fSource, $fKey);
+    }
+
+    protected function belongsTo($pKey, $fSource, $fKey='id')
+    {
+        return $this->relateOne('belongsTo', $pKey, $fSource, $fKey);
+    }
+
+    private function relateOne($type, $pKey, $fSource, $fKey)
+    {
+        $pKeyVal = '';
+        if($type == 'hasOne')
+        {
+            $primaryKey = ($pKey)? $pKey: $this->primaryKey;
+            $pKeyVal    = $this->{$primaryKey};
+        }
+        else
+        {
+            $pKeyVal = $this->{$pKey};
+        }
+        if(class_exists($fSource))
+        {
+            return $fSource::select('*')->where($fKey, $pKeyVal)->first();
+        }
+        else
+        {
+            return DB::query("SELECT * FROM {$fSource} WHERE {$fKey}={$pKeyVal} LIMIT 1");
+        }
     }
 }

@@ -10,6 +10,7 @@ class QueryBuilder
     private static $type   = '';
     private static $data   = [];
     private static $cols   = ['*'];
+    private static $alias  = NULL;
     private static $conds  = [];
     private static $order  = [];
     private static $join   = [];
@@ -48,9 +49,9 @@ class QueryBuilder
         return self::$model;
     }
 
-    public static function find($conds=[])
+    public static function alias($alias=NULL)
     {
-        self::$conds = $conds;
+        self::$alias = $alias;
         return self::$model;
     }
 
@@ -448,7 +449,7 @@ class QueryBuilder
             $i = 0;
             foreach(self::$join as $table => $tjoin)
             {
-                $query = (($i)?" JOIN ":"JOIN ").$table." ON ";
+                $query = (($i)?" JOIN ":"JOIN ").$table.(isset($tjoin['alias'])?" ".$tjoin['alias']:"")." ON ";
                 if(sizeof($tjoin['conds']) > 0)
                 {
                     $clauses = '';
@@ -617,7 +618,7 @@ class QueryBuilder
 
     private static function prepareSelect($val='')
     {
-        self::$query = "SELECT ".self::selectColumns()." FROM ".self::getTable()." ";
+        self::$query = "SELECT ".self::selectColumns()." FROM ".self::getTable().((self::$alias)? " ".self::$alias." ": " ");
         if($val)
         {
             self::$conds[self::$model->getPrimaryKey()] = $val;
@@ -687,6 +688,7 @@ class QueryBuilder
     {
         self::$type   = '';
         self::$cols   = ['*'];
+        self::$alias  = NULL;
         self::$join   = [];
         self::$conds  = [];
         self::$order  = [];

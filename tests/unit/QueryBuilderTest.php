@@ -162,4 +162,13 @@ final class QueryBuilderTest extends TestCase
         $model->reset();
         $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id JOIN user_student ON user.id=user_student.user_id', $query);
     }
+
+    public function testJoinResult()
+    {
+        $results = User::select(['u.id', 'u.name', 's.id', 's.user_id', 's.father_name'])->alias('u')->join('student', 's')->on(['u.id' => 's.user_id'])->all();
+        $this->assertIsArray($results);
+
+        $result = User::select(['u.id', 'u.name', 's.id', 's.user_id', 's.father_name'])->alias('u')->join('student', 's')->on(['u.id' => 's.user_id'])->first();
+        $this->assertInstanceOf(User::class, $result);
+    }
 }
