@@ -205,11 +205,24 @@ class QueryBuilder
         return self::execute();
     }
 
+    public static function set($data=[])
+    {
+        self::$type = 'update';
+        self::$data= $data;
+        return self::$model;
+    }
+
     public static function update($data=[], $conds=[])
     {
         self::$type = 'update';
-        self::$data = $data;
-        self::$conds= $conds;
+        if(!empty($data))
+        {
+            self::$data= $data;
+        }
+        if(!empty($conds))
+        {
+            self::$conds= $conds;
+        }
         self::buildQuery();
         return self::execute();
     }
@@ -217,7 +230,10 @@ class QueryBuilder
     public static function delete($conds=[])
     {
         self::$type = 'delete';
-        self::$conds= $conds;
+        if(!empty($conds))
+        {
+            self::$conds= $conds;
+        }
         self::buildQuery();
         return self::execute();
     }
@@ -315,7 +331,7 @@ class QueryBuilder
     private static function prepareUpdate()
     {
         self::checkTimestamps();
-        self::$query = "UPDATE ".self::getTable()." SET ".self::setValues();
+        self::$query = "UPDATE ".self::getTable()." SET ".self::setValues()." ";
         self::setConditions();
     }
 
@@ -422,18 +438,25 @@ class QueryBuilder
         {
             foreach(self::$data as $column => $value)
             {
-                $query .= "{$column}=";
-                if(in_array($column, self::$model->getTimestampsCols()))
+                if(is_numeric($column))
                 {
-                    $query .= ($value == DB::NOW)? $value: "'".$value."'";
-                }
-                else if(is_string($value))
-                {
-                    $query .= "'".addslashes($value)."'";
+                    $query .= $value;
                 }
                 else
                 {
-                    $query .= ($value === NULL)? "NULL": $value;
+                    $query .= "{$column}=";
+                    if(in_array($column, self::$model->getTimestampsCols()))
+                    {
+                        $query .= ($value == DB::NOW)? $value: "'".$value."'";
+                    }
+                    else if(is_string($value))
+                    {
+                        $query .= "'".addslashes($value)."'";
+                    }
+                    else
+                    {
+                        $query .= ($value === NULL)? "NULL": $value;
+                    }  
                 }
                 $query .= self::DELIMITER;
             }

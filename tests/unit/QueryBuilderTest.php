@@ -105,6 +105,16 @@ final class QueryBuilderTest extends TestCase
 
     public function testRaw()
     {
+        $model = User::select(['id', 'NOW()'])->where('DATE(created_at)>2020-07-10');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT id,NOW() FROM user WHERE DATE(created_at)>2020-07-10", $query);
+
+        $model = User::set(['name' => 'sami', 'created_at = NOW() - INTERVAL 1 DAY'])->where('DATE(created_at)>2020-07-10');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("UPDATE user SET name='sami',created_at = NOW() - INTERVAL 1 DAY,updated_at=NOW() WHERE DATE(created_at)>2020-07-10", $query);
+
         $model = User::where("DATE(created_at)='2020-02-20'")->and("IFNULL(image, '')!=''")->or('YEAR(created_at)=2019')->and(['col1' => 'val1', 'col2' => ['1','2']])->or(['id' => '1', [DB::SQL_OR => ['name' => 'sami']], ['some' => 'value']])->or('updated_at', 'val')->and('created_at', 'some');
         $query = $model->query();
         $model->reset();
