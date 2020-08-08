@@ -3,6 +3,7 @@
 namespace PHPattern;
 use PHPattern\Database\Connection;
 use PHPattern\Database\Error;
+use PHPattern\Database\Raw;
 use PDO;
 use PDOException;
 
@@ -13,7 +14,12 @@ class DB
 	const SQL_AND = ' AND ';
     const SQL_OR  = ' OR ';
 
-	public static function query($query, $type='', $env='', $isObject=false, $class=NULL)
+    public static function raw($string)
+    {
+    	return new Raw($string);
+    }
+
+	public static function execute($query, $type='', $env='', $isObject=false, $class=NULL)
 	{
 		try 
 		{

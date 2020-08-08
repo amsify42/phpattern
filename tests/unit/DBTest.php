@@ -23,7 +23,7 @@ final class DBTest extends TestCase
 
     public function testSelectAll()
     {
-        $result = \PHPattern\DB::query('SELECT * FROM user');
+        $result = \PHPattern\DB::execute('SELECT * FROM user');
         $this->assertIsArray($result);
     }
 }

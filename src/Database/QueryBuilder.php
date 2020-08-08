@@ -3,6 +3,7 @@
 namespace PHPattern\Database;
 
 use PHPattern\DB;
+use \PHPattern\Database\Raw;
 
 class QueryBuilder
 {
@@ -197,12 +198,19 @@ class QueryBuilder
         return self::$model;
     }
 
-    public static function insert($data=[])
+    public static function insert($data=[], $execute=true)
     {
         self::$type = 'insert';
         self::$data = $data;
-        self::buildQuery();
-        return self::execute();
+        if($execute)
+        {
+            self::buildQuery();
+            return self::execute();
+        }
+        else
+        {
+            return self::$model;
+        }
     }
 
     public static function set($data=[])
@@ -309,11 +317,15 @@ class QueryBuilder
             $query .= "{$column},";
             if(in_array($column, self::$model->getTimestampsCols()))
             {
-                $values .= ($value == DB::NOW)? $value: "'".$value."'";
+                $values .= ($value instanceof Raw || $value == DB::NOW)? $value: "'".$value."'";
             }
             else if(is_string($value))
             {
                 $values .= "'".addslashes($value)."'";
+            }
+            else if($value instanceof Raw)
+            {
+                $values .= $value;
             }
             else
             {
@@ -447,7 +459,7 @@ class QueryBuilder
                     $query .= "{$column}=";
                     if(in_array($column, self::$model->getTimestampsCols()))
                     {
-                        $query .= ($value == DB::NOW)? $value: "'".$value."'";
+                        $query .= ($value instanceof Raw || $value == DB::NOW)? $value: "'".$value."'";
                     }
                     else if(is_string($value))
                     {
@@ -498,7 +510,7 @@ class QueryBuilder
                 $clauses = '';
                 foreach(self::$conds as $column => $value)
                 {
-                    if(isset($value[self::MULTI_COND]))
+                    if(is_array($value) && isset($value[self::MULTI_COND]))
                     {
                         $clauses .= self::conditionsToRaw($value[self::MULTI_COND], $value['conj']);
                     }
@@ -603,7 +615,7 @@ class QueryBuilder
 
     public static function whereColVal($col, $op, $value, $conj=NULL, $isJoin=false)
     {
-        $query = ($conj)? $conj: DB::SQL_AND;
+        $query  = ($conj)? $conj: DB::SQL_AND;
         $query .= "{$col}".(($value !== NULL)? $op: "");
         if($value !== NULL)
         {
@@ -700,9 +712,9 @@ class QueryBuilder
         return self::$query;
     }
 
-    private static function execute()
+    public static function execute()
     {
-        $result = DB::query(self::$query, self::$type, '', self::$model->fetchObj(), (self::$model->isORM())? get_class(self::$model): '');
+        $result = DB::execute(self::$query, self::$type, '', self::$model->fetchObj(), (self::$model->isORM())? get_class(self::$model): '');
         self::reset();
         return $result;
     }

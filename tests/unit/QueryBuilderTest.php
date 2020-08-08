@@ -119,6 +119,22 @@ final class QueryBuilderTest extends TestCase
         $query = $model->query();
         $model->reset();
         $this->assertEquals("SELECT * FROM user WHERE DATE(created_at)='2020-02-20' AND IFNULL(image, '')!='' OR YEAR(created_at)=2019 AND (col1='val1' AND col2 IN('1','2')) OR (id='1' OR name='sami' AND some='value') OR updated_at='val' AND created_at='some'", $query);
+
+        $time  = time();
+        $model = User::insert(['name' => 'sami_'.$time, 'created_at' => DB::raw('NOW() - INTERVAL 1 DAY')], false);
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("INSERT INTO user (name,created_at,updated_at) VALUES ('sami_{$time}',NOW() - INTERVAL 1 DAY,NOW())", $query);
+
+        $model = User::set(['name' => 'sami', 'created_at' => DB::raw('NOW() - INTERVAL 1 DAY')])->where('DATE(created_at)', '>', DB::raw('2020-07-10'));
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("UPDATE user SET name='sami',created_at=NOW() - INTERVAL 1 DAY,updated_at=NOW() WHERE DATE(created_at)>2020-07-10", $query);
+
+        $model = User::where('DATE(created_at)', DB::raw('2020-02-20'))->or('YEAR(created_at)', DB::raw('2019'))->and(['col1' => 'val1', 'col2' => ['1','2']])->or(['id' => '1', [DB::SQL_OR => ['name' => 'sami']], ['some' => 'value']])->or('updated_at', 'val')->and('created_at', 'some');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals("SELECT * FROM user WHERE DATE(created_at)=2020-02-20 OR YEAR(created_at)=2019 AND (col1='val1' AND col2 IN('1','2')) OR (id='1' OR name='sami' AND some='value') OR updated_at='val' AND created_at='some'", $query);
     }
 
     public function testLimit()
