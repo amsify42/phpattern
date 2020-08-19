@@ -3,85 +3,79 @@
 namespace PHPattern\Database;
 
 use PHPattern\DB;
-use \PHPattern\Database\Raw;
+use PHPattern\Database\Raw;
 
 class QueryBuilder
 {
-    private static $model  = NULL;
-    private static $type   = '';
-    private static $data   = [];
-    private static $cols   = ['*'];
-    private static $alias  = NULL;
-    private static $conds  = [];
-    private static $order  = [];
-    private static $join   = [];
-    private static $actJTab= '';
-    private static $group  = NULL;
-    private static $having = NULL;
-    private static $limit  = NULL;
-    private static $offset = NULL;
-    private static $query  = NULL;
+    private $model  = NULL;
+    private $type   = '';
+    private $data   = [];
+    private $cols   = ['*'];
+    private $alias  = NULL;
+    private $conds  = [];
+    private $order  = [];
+    private $join   = [];
+    private $actJTab= '';
+    private $group  = NULL;
+    private $having = NULL;
+    private $limit  = NULL;
+    private $offset = NULL;
+    private $query  = NULL;
 
     const DELIMITER  = ',';
     const SQL_WHERE  = 'WHERE ';
-    const SQL_RAW    = '__raw';
     const MULTI_COND = '__multi';
     const DEFAULT_OP = '='; 
 
-    public static function getModel()
+    function __construct($model)
     {
-        return self::$model;
+        $this->model = $model;
     }
 
-    public static function setModel($model)
+    private function getTable()
     {
-        self::$model = $model;
+        return ($this->model)? $this->model->getTable(): NULL;
     }
 
-    private static function getTable()
+    public function select($cols=['*'])
     {
-        return (self::$model)? self::$model->getTable(): NULL;
+        $this->type = '';
+        $this->cols = $cols;
+        return $this;
     }
 
-    public static function select($cols=['*'])
+    public function alias($alias=NULL)
     {
-        self::$type = '';
-        self::$cols = $cols;
-        return self::$model;
+        $this->alias = $alias;
+        return $this;
     }
 
-    public static function alias($alias=NULL)
+    public function where($col, $op=NULL, $value=NULL)
     {
-        self::$alias = $alias;
-        return self::$model;
+        return $this->setCondition($col, $op, $value);
     }
 
-    public static function where($col, $op=NULL, $value=NULL)
+    public function and($col, $op=NULL, $value=NULL)
     {
-        return self::setCondition($col, $op, $value);
+        return $this->setCondition($col, $op, $value, DB::SQL_AND);
     }
 
-    public static function and($col, $op=NULL, $value=NULL)
+    public function or($col, $op=NULL, $value=NULL)
     {
-        return self::setCondition($col, $op, $value, DB::SQL_AND);
+        return $this->setCondition($col, $op, $value, DB::SQL_OR);
     }
 
-    public static function or($col, $op=NULL, $value=NULL)
-    {
-        return self::setCondition($col, $op, $value, DB::SQL_OR);
-    }
-
-    private static function setCondition($col, $op=NULL, $value=NULL, $conj=NULL)
+    private function setCondition($col, $op=NULL, $value=NULL, $conj=NULL)
     {
         if(is_array($col))
         {
-            self::$conds[] = [self::MULTI_COND => $col, 'conj' => $conj];
+            $this->conds[] = [self::MULTI_COND => $col, 'conj' => $conj];
         }
         else
         {
             if($conj && $conj == DB::SQL_OR)
             {
-                self::$conds[] = [
+                $this->conds[] = [
                             'conj' => $conj,
                             'col'  => $col,
                             'op'   => ($value)? $op: self::DEFAULT_OP,
@@ -92,7 +86,7 @@ class QueryBuilder
             {
                 if($value)
                 {
-                    self::$conds[] = [
+                    $this->conds[] = [
                             'conj' => DB::SQL_AND,
                             'col'  => $col,
                             'op'   => $op,
@@ -104,51 +98,51 @@ class QueryBuilder
                 {
                     if($op)
                     {
-                        self::$conds[$col] = $op;
+                        $this->conds[$col] = $op;
                     }
                     else
                     {
-                        self::$conds[] = $col;   
+                        $this->conds[] = $col;   
                     }
                 }
             }
         }
-        return self::$model;
+        return $this;
     }
 
-    public static function whereIn($col, $value)
+    public function whereIn($col, $value)
     {
-        self::$conds[$col] = is_array($value)? $value: [$value];
-        return self::$model;
+        $this->conds[$col] = is_array($value)? $value: [$value];
+        return $this;
     }
 
-    public static function like($col, $value)
+    public function like($col, $value)
     {
-        self::$conds[$col] = $value;
-        return self::$model;
+        $this->conds[$col] = $value;
+        return $this;
     }
 
-    public static function join($table, $alias=NULL)
+    public function join($table, $alias=NULL)
     {
-        self::$actJTab      = $table;
-        self::$join[$table] = ($alias)? ['alias' => $alias]: [];
-        return self::$model;
+        $this->actJTab      = $table;
+        $this->join[$table] = ($alias)? ['alias' => $alias]: [];
+        return $this;
     }
 
-    public static function on($x, $op='=', $y=NULL)
+    public function on($x, $op='=', $y=NULL)
     {
-        if(self::$actJTab)
+        if($this->actJTab)
         {
-            if(!isset(self::$join[self::$actJTab]['conds']))
+            if(!isset($this->join[$this->actJTab]['conds']))
             {
-                self::$join[self::$actJTab]['conds'] = [];   
+                $this->join[$this->actJTab]['conds'] = [];   
             }
 
             if(is_array($x))
             {
                 foreach($x as $xk => $cond)
                 {
-                    self::$join[self::$actJTab]['conds'][$xk] = $cond;
+                    $this->join[$this->actJTab]['conds'][$xk] = $cond;
                 }
             }
             else
@@ -158,121 +152,121 @@ class QueryBuilder
                 {
                     $condition = $x.$op.$y;
                 }
-                self::$join[self::$actJTab]['conds'][] = $condition;   
+                $this->join[$this->actJTab]['conds'][] = $condition;   
             }
         }
-        return self::$model;
+        return $this;
     }
 
-    public static function orderBy($col, $order='ASC')
+    public function orderBy($col, $order='ASC')
     {
-        self::$order[$col] = $order;
-        return self::$model;
+        $this->order[$col] = $order;
+        return $this;
     }
 
-    public static function groupBy($col)
+    public function groupBy($col)
     {
-        self::$group = $col;
-        return self::$model;
+        $this->group = $col;
+        return $this;
     }
 
-    public static function having($havings)
+    public function having($havings)
     {
-        self::$having = $havings;
-        return self::$model;
+        $this->having = $havings;
+        return $this;
     }
 
-    public static function limit($limit, $offset=NULL)
+    public function limit($limit, $offset=NULL)
     {
-        self::$limit = $limit;
+        $this->limit = $limit;
         if($offset)
         {
-            self::offset($offset);
+            $this->offset($offset);
         }
-        return self::$model;
+        return $this;
     }
 
-    public static function offset($offset)
+    public function offset($offset)
     {
-        self::$offset = $offset;
-        return self::$model;
+        $this->offset = $offset;
+        return $this;
     }
 
-    public static function insert($data=[], $execute=true)
+    public function insert($data=[], $execute=true)
     {
-        self::$type = 'insert';
-        self::$data = $data;
+        $this->type = 'insert';
+        $this->data = $data;
         if($execute)
         {
-            self::buildQuery();
-            return self::execute();
+            $this->buildQuery();
+            return $this->execute();
         }
         else
         {
-            return self::$model;
+            return $this;
         }
     }
 
-    public static function set($data=[])
+    public function set($data=[])
     {
-        self::$type = 'update';
-        self::$data= $data;
-        return self::$model;
+        $this->type = 'update';
+        $this->data= $data;
+        return $this;
     }
 
-    public static function update($data=[], $conds=[])
+    public function update($data=[], $conds=[])
     {
-        self::$type = 'update';
+        $this->type = 'update';
         if(!empty($data))
         {
-            self::$data= $data;
+            $this->data= $data;
         }
         if(!empty($conds))
         {
-            self::$conds= $conds;
+            $this->conds= $conds;
         }
-        self::buildQuery();
-        return self::execute();
+        $this->buildQuery();
+        return $this->execute();
     }
 
-    public static function delete($conds=[])
+    public function delete($conds=[])
     {
-        self::$type = 'delete';
+        $this->type = 'delete';
         if(!empty($conds))
         {
-            self::$conds= $conds;
+            $this->conds= $conds;
         }
-        self::buildQuery();
-        return self::execute();
+        $this->buildQuery();
+        return $this->execute();
     }
 
-    public static function all()
+    public function all()
     {
-        self::buildQuery();
-        return self::execute();
+        $this->buildQuery();
+        return $this->execute();
     }
 
-    public static function first($val='')
+    public function first($val='')
     {
-        self::$limit = 1;
-        self::buildQuery($val);
-        $result = self::execute();
+        $this->limit = 1;
+        $this->buildQuery($val);
+        $result = $this->execute();
         return isset($result[0])? $result[0]: NULL;
     }
 
-    public static function count($col='')
+    public function count($col='')
     {
         $el = ($col == 'id')? 'id': 1;
-        self::$cols = "COUNT({$el}) as count";
-        self::buildQuery();
-        return self::execute();
+        $this->cols = "COUNT({$el}) as count";
+        $this->buildQuery();
+        return $this->execute();
     }
 
-    public static function paginate($limit, $page=NULL)
+    public function paginate($limit, $page=NULL)
     {
-        if(!self::$limit)
+        if(!$this->limit)
         {
-            self::$limit = $limit;
+            $this->limit = $limit;
         }
 
         $page = ($page !== NULL)? $page: \PHPattern\Request::get('page');
@@ -281,41 +275,41 @@ class QueryBuilder
             $page = 1;
         }
 
-        self::$offset = ($page-1)*self::$limit;
-        self::buildQuery();
-        return self::execute();
+        $this->offset = ($page-1)*$this->limit;
+        $this->buildQuery();
+        return $this->execute();
     }
 
     private function buildQuery($val='')
     {
-        if(self::$type == 'insert')
+        if($this->type == 'insert')
         {
-            self::prepareInsert();
+            $this->prepareInsert();
         }
-        else if(self::$type == 'update')
+        else if($this->type == 'update')
         {
-            self::prepareUpdate();
+            $this->prepareUpdate();
         }
-        else if(self::$type == 'delete')
+        else if($this->type == 'delete')
         {
-            self::prepareDelete();
+            $this->prepareDelete();
         }
         else
         {
-            self::prepareSelect($val);
+            $this->prepareSelect($val);
         }
-        self::$query = trim(self::$query);
+        $this->query = trim($this->query);
     }
 
-    private static function prepareInsert()
+    private function prepareInsert()
     {
-        self::checkTimestamps();
-        $query  = "INSERT INTO ".self::getTable()." (";
+        $this->checkTimestamps();
+        $query  = "INSERT INTO ".$this->getTable()." (";
         $values = " VALUES (";
-        foreach(self::$data as $column => $value)
+        foreach($this->data as $column => $value)
         {
             $query .= "{$column},";
-            if(in_array($column, self::$model->getTimestampsCols()))
+            if(in_array($column, $this->model->getTimestampsCols()))
             {
                 $values .= ($value instanceof Raw || $value == DB::NOW)? $value: "'".$value."'";
             }
@@ -337,61 +331,61 @@ class QueryBuilder
         $query .= ")";
         $values = rtrim($values, self::DELIMITER);
         $values .= ")";
-        self::$query = $query.$values;
+        $this->query = $query.$values;
     }
 
-    private static function prepareUpdate()
+    private function prepareUpdate()
     {
-        self::checkTimestamps();
-        self::$query = "UPDATE ".self::getTable()." SET ".self::setValues()." ";
-        self::setConditions();
+        $this->checkTimestamps();
+        $this->query = "UPDATE ".$this->getTable()." SET ".$this->setValues()." ";
+        $this->setConditions();
     }
 
-    private static function prepareDelete()
+    private function prepareDelete()
     {
-        self::checkTimestamps();
-        self::$query = "DELETE FROM ".self::getTable()." ";
-        self::setConditions();
+        $this->checkTimestamps();
+        $this->query = "DELETE FROM ".$this->getTable()." ";
+        $this->setConditions();
     }
 
-    private static function setOrder()
+    private function setOrder()
     {
-        if(!empty(self::$order))
+        if(!empty($this->order))
         {
-            self::$query .= " ORDER BY";
-            foreach(self::$order as $col => $order)
+            $this->query .= " ORDER BY";
+            foreach($this->order as $col => $order)
             {
-                self::$query .= " ".$col." ".$order.self::DELIMITER;
+                $this->query .= " ".$col." ".$order.self::DELIMITER;
             }
-            self::$query = rtrim(self::$query, self::DELIMITER);
+            $this->query = rtrim($this->query, self::DELIMITER);
         }
     }
 
-    private static function setGroupBy()
+    private function setGroupBy()
     {
-        if(self::$group)
+        if($this->group)
         {
-            self::$query = trim(self::$query)." GROUP BY ";
-            if(is_array(self::$group))
+            $this->query = trim($this->query)." GROUP BY ";
+            if(is_array($this->group))
             {
-                self::$query .= implode(',', self::$group);
+                $this->query .= implode(',', $this->group);
             }
             else
             {
-                self::$query .= self::$group;
+                $this->query .= $this->group;
             }
         }
     }
 
-    private static function setHaving()
+    private function setHaving()
     {
-        if(self::$having)
+        if($this->having)
         {
             $query = " HAVING ";
-            if(is_array(self::$having))
+            if(is_array($this->having))
             {
                 $isOne = false;
-                foreach(self::$having as $col => $value)
+                foreach($this->having as $col => $value)
                 {
                     if($isOne)
                     {
@@ -425,30 +419,30 @@ class QueryBuilder
             }
             else
             {
-                $query .= self::$having;
+                $query .= $this->having;
             }
-            self::$query .= $query;
+            $this->query .= $query;
         }
     }
 
-    private static function setLimit()
+    private function setLimit()
     {
-        if(self::$limit)
+        if($this->limit)
         {
-            self::$query .= " LIMIT ".self::$limit;
+            $this->query .= " LIMIT ".$this->limit;
         }
-        if(self::$offset)
+        if($this->offset)
         {
-            self::$query .= " OFFSET ".self::$offset;
+            $this->query .= " OFFSET ".$this->offset;
         }
     }
 
-    private static function setValues()
+    private function setValues()
     {
         $query = "";
-        if(sizeof(self::$data)> 0)
+        if(sizeof($this->data)> 0)
         {
-            foreach(self::$data as $column => $value)
+            foreach($this->data as $column => $value)
             {
                 if(is_numeric($column))
                 {
@@ -457,7 +451,7 @@ class QueryBuilder
                 else
                 {
                     $query .= "{$column}=";
-                    if(in_array($column, self::$model->getTimestampsCols()))
+                    if(in_array($column, $this->model->getTimestampsCols()))
                     {
                         $query .= ($value instanceof Raw || $value == DB::NOW)? $value: "'".$value."'";
                     }
@@ -477,12 +471,12 @@ class QueryBuilder
         return $query;
     }
 
-    private static function setJoin()
+    private function setJoin()
     {
-        if(sizeof(self::$join)> 0)
+        if(sizeof($this->join)> 0)
         {
             $i = 0;
-            foreach(self::$join as $table => $tjoin)
+            foreach($this->join as $table => $tjoin)
             {
                 $query = (($i)?" JOIN ":"JOIN ").$table.(isset($tjoin['alias'])?" ".$tjoin['alias']:"")." ON ";
                 if(sizeof($tjoin['conds']) > 0)
@@ -490,64 +484,64 @@ class QueryBuilder
                     $clauses = '';
                     foreach($tjoin['conds'] as $ck => $cond)
                     {
-                        $clauses .= self::clauseToRaw($ck, $cond, true);
+                        $clauses .= $this->clauseToRaw($ck, $cond, true);
                     }
                     $query .= substr($clauses, strlen(DB::SQL_AND));
                 }
-                self::$query .= $query;
+                $this->query .= $query;
                 $i++;
             }
         }
     }
 
-    private static function setConditions()
+    private function setConditions()
     {
-        if(is_array(self::$conds))
+        if(is_array($this->conds))
         {
-            if(sizeof(self::$conds)> 0)
+            if(sizeof($this->conds)> 0)
             {
-                self::$query .= self::SQL_WHERE;
+                $this->query .= self::SQL_WHERE;
                 $clauses = '';
-                foreach(self::$conds as $column => $value)
+                foreach($this->conds as $column => $value)
                 {
                     if(is_array($value) && isset($value[self::MULTI_COND]))
                     {
-                        $clauses .= self::conditionsToRaw($value[self::MULTI_COND], $value['conj']);
+                        $clauses .= $this->conditionsToRaw($value[self::MULTI_COND], $value['conj']);
                     }
                     else
                     {
-                        $clauses .= self::clauseToRaw($column, $value);
+                        $clauses .= $this->clauseToRaw($column, $value);
                     }
                 }
-                self::$query .= substr($clauses, strlen(DB::SQL_AND));
+                $this->query .= substr($clauses, strlen(DB::SQL_AND));
             }
         }
-        else if(self::$conds)
+        else if($this->conds)
         {
-            self::$query .= self::SQL_WHERE.self::$model->getPrimaryKey()."=".self::$conds;
+            $this->query .= self::SQL_WHERE.$this->model->getPrimaryKey()."=".$this->conds;
         }
     }
 
-    private static function startsWith($haystack, $needle)
+    private function startsWith($haystack, $needle)
     {
          $length = strlen($needle);
          return (substr($haystack, 0, $length) === $needle);
     }
 
-    private static function conditionsToRaw($columns, $conj=NULL)
+    private function conditionsToRaw($columns, $conj=NULL)
     {
         $conds = ''; 
         if(sizeof($columns))
         {
             foreach($columns as $column => $value)
             {
-                $conds .= self::clauseToRaw($column, $value);
+                $conds .= $this->clauseToRaw($column, $value);
             }
         }
         return (($conj)? $conj: '').'('. substr($conds, strlen(DB::SQL_AND)).')';
     }
 
-    private static function clauseToRaw($column, $value, $isJoin=false)
+    private function clauseToRaw($column, $value, $isJoin=false)
     {
         $clause = '';
         if(is_array($value))
@@ -592,11 +586,11 @@ class QueryBuilder
             }
             if($in)
             {
-                $clause .= self::whereInColVal($col, $val, $conj);
+                $clause .= $this->whereInColVal($col, $val, $conj);
             }
             else
             {
-                $clause .= self::whereColVal($col, $op, $val, $conj, $isJoin);
+                $clause .= $this->whereColVal($col, $op, $val, $conj, $isJoin);
             }
         }
         else
@@ -607,13 +601,13 @@ class QueryBuilder
             }
             else
             {
-                $clause .= self::whereColVal($column, self::DEFAULT_OP, $value, NULL, $isJoin);
+                $clause .= $this->whereColVal($column, self::DEFAULT_OP, $value, NULL, $isJoin);
             }
         }
         return $clause;
     }
 
-    public static function whereColVal($col, $op, $value, $conj=NULL, $isJoin=false)
+    public function whereColVal($col, $op, $value, $conj=NULL, $isJoin=false)
     {
         $query  = ($conj)? $conj: DB::SQL_AND;
         $query .= "{$col}".(($value !== NULL)? $op: "");
@@ -631,7 +625,7 @@ class QueryBuilder
         return $query;
     }
 
-    public static function whereInColVal($col, $items, $conj=NULL)
+    public function whereInColVal($col, $items, $conj=NULL)
     {
         $query      = ($conj)? $conj: DB::SQL_AND;
         $inElements = '';
@@ -651,31 +645,31 @@ class QueryBuilder
         return $query."{$col} IN({$inElements})";
     }
 
-    private static function prepareSelect($val='')
+    private function prepareSelect($val='')
     {
-        self::$query = "SELECT ".self::selectColumns()." FROM ".self::getTable().((self::$alias)? " ".self::$alias." ": " ");
+        $this->query = "SELECT ".$this->selectColumns()." FROM ".$this->getTable().(($this->alias)? " ".$this->alias." ": " ");
         if($val)
         {
-            self::$conds[self::$model->getPrimaryKey()] = $val;
+            $this->conds[$this->model->getPrimaryKey()] = $val;
         }
-        self::setJoin();
-        self::setConditions();
-        self::setGroupBy();
-        self::setHaving();
-        self::setOrder();
-        self::setLimit();
+        $this->setJoin();
+        $this->setConditions();
+        $this->setGroupBy();
+        $this->setHaving();
+        $this->setOrder();
+        $this->setLimit();
     }
 
-    public static function selectColumns()
+    public function selectColumns()
     {
-        if(is_string(self::$cols))
+        if(is_string($this->cols))
         {
-            return self::$cols;
+            return $this->cols;
         }
         else
         {
             $query = '';
-            foreach(self::$cols as $col)
+            foreach($this->cols as $col)
             {
                 if($col == '*')
                 {
@@ -688,49 +682,49 @@ class QueryBuilder
         }
     }
 
-    private static function checkTimestamps()
+    private function checkTimestamps()
     {
-        if(self::$model->isTimestamps())
+        if($this->model->isTimestamps())
         {
-            if(sizeof(self::$data)>0)
+            if(sizeof($this->data)>0)
             {
-                if(self::$type == 'insert' && !isset(self::$data['created_at']))
+                if($this->type == 'insert' && !isset($this->data['created_at']))
                 {
-                    self::$data['created_at'] = DB::NOW;
+                    $this->data['created_at'] = DB::NOW;
                 }
                 if(!isset($data['updated_at']))
                 {
-                    self::$data['updated_at'] = DB::NOW;
+                    $this->data['updated_at'] = DB::NOW;
                 }
             }
         }
     }
 
-    public static function query()
+    public function query()
     {
-        self::buildQuery();
-        return self::$query;
+        $this->buildQuery();
+        return $this->query;
     }
 
-    public static function execute()
+    public function execute()
     {
-        $result = DB::execute(self::$query, self::$type, '', self::$model->fetchObj(), (self::$model->isORM())? get_class(self::$model): '');
-        self::reset();
+        $result = DB::execute($this->query, $this->type, '', $this->model->fetchObj(), ($this->model->isORM())? get_class($this->model): '');
+        $this->reset();
         return $result;
     }
 
-    public static function reset()
+    public function reset()
     {
-        self::$type   = '';
-        self::$cols   = ['*'];
-        self::$alias  = NULL;
-        self::$join   = [];
-        self::$conds  = [];
-        self::$order  = [];
-        self::$group  = NULL;
-        self::$having = NULL;
-        self::$limit  = NULL;
-        self::$offset = NULL;
-        self::$query  = NULL;
+        $this->type   = '';
+        $this->cols   = ['*'];
+        $this->alias  = NULL;
+        $this->join   = [];
+        $this->conds  = [];
+        $this->order  = [];
+        $this->group  = NULL;
+        $this->having = NULL;
+        $this->limit  = NULL;
+        $this->offset = NULL;
+        $this->query  = NULL;
     }
 }

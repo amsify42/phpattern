@@ -1,2 +1,1 @@
-Pending:
-1. Make query builder instantiated with each model.
+Pending...

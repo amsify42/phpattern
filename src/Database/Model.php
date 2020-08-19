@@ -32,27 +32,24 @@ class Model
         return class_to_underscore($reflect->getShortName());
     }
 
-    private static function checkTableModel()
+    private static function checkTableQueryBuilder()
     {
-        $model = Tables::retreiveModel(self::findTable());
-        if(!$model)
+        $name         = self::findTable();
+        $queryBuilder = Tables::retreiveQueryBuilder($name);
+        if(!$queryBuilder)
         {
-            $model = new static;
-            Tables::storeModel($model->getTable(), $model);
+            $queryBuilder = new QueryBuilder(new static);
+            Tables::storeQueryBuilder($name, $queryBuilder);
         }
-        return $model;
+        return $queryBuilder;
     }
 
     function __call($name, $args)
     {
-        $model = self::checkTableModel();
-        if(is_callable([QueryBuilder::class, $name]))
+        $queryBuilder = self::checkTableQueryBuilder();
+        if(is_callable([$queryBuilder, $name]))
         {
-            if(QueryBuilder::getModel() != $model)
-            {
-                QueryBuilder::setModel($model);
-            }
-            return call_user_func_array([QueryBuilder::class, $name], $args);
+            return call_user_func_array([$queryBuilder, $name], $args);
         }
         else if(isset($this->{$name}))
         {
@@ -62,14 +59,10 @@ class Model
 
     public static function __callStatic($name, $args)
     {
-        $model = self::checkTableModel();
-        if(is_callable([QueryBuilder::class, $name]))
+        $queryBuilder = self::checkTableQueryBuilder();
+        if(is_callable([$queryBuilder, $name]))
         {
-            if(QueryBuilder::getModel() != $model)
-            {
-                QueryBuilder::setModel($model);
-            }
-            return call_user_func_array([QueryBuilder::class, $name], $args);
+            return call_user_func_array([$queryBuilder, $name], $args);
         }
     }
 

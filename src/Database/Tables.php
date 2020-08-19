@@ -6,20 +6,20 @@ use ReflectionClass;
 
 class Tables
 {
-    private static $models = [];
+    private static $queryBuilders = [];
 
-    public static function storeModel($table, $model)
+    public static function storeQueryBuilder($table, $queryBuilder)
     {
-        self::$models[$table] = $model;
+        self::$queryBuilders[$table] = $queryBuilder;
     }
 
-    public static function retreiveModel($table)
+    public static function retreiveQueryBuilder($table)
     {
-        return self::isModel($table)? self::$models[$table]: NULL;
+        return self::isQueryBuilder($table)? self::$queryBuilders[$table]: NULL;
     }
 
-    public static function isModel($table)
+    public static function isQueryBuilder($table)
     {
-        return isset(self::$models[$table])? true: false;
+        return isset(self::$queryBuilders[$table])? true: false;
     }
 }
