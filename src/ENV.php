@@ -21,7 +21,7 @@ class ENV
             self::$env = new Config(ROOT_PATH.DS.'.env');
             if(!self::$env->isFile())
             {
-                self::$env->saveContent("DB_CONNECTION=mysql\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_NAME=phpattern\nDB_USER=root\nDB_PASSWORD=");
+                self::$env->saveContent("DB_HOST=127.0.0.1\nDB_PORT=3306\nDB_NAME=phpattern\nDB_USER=root\nDB_PASSWORD=");
                 self::$env->loadData();
             }
         }
