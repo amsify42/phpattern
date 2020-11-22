@@ -5,7 +5,7 @@
  */
 function app_env()
 {
-	return '';
+	return \PHPattern\ENV::get('NAME');
 }
 
 /**
@@ -118,21 +118,6 @@ function array_to_xml($data, &$xml)
             $xml->addChild($key, htmlspecialchars($value));
         }
      }
-}
-
-/**
- * Get new model instance
- * @param  string $table
- * @return \PHPattern\Model $model
- */
-function get_model($table='')
-{
-	$model = new \PHPattern\Database\Model();
-	if($table)
-	{
-		$model->setTable($table);
-	}
-	return $model;
 }
 
 /**

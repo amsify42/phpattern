@@ -12,7 +12,6 @@ class Model
     protected $table          = '';
     protected $primaryKey     = 'id';
     protected $timestamps     = false;
-    protected $pageLimit      = 10;
 
     protected $fetchObj       = true;
     protected $isORM          = true;
@@ -96,17 +95,6 @@ class Model
     public function isTimestamps()
     {
         return $this->timestamps;
-    }
-
-    public function setPageLimit($pageLimit=10)
-    {
-        $this->pageLimit = $pageLimit;
-        return $this;
-    }
-
-    public function getPageLimit()
-    {
-        return $this->pageLimit;
     }
 
     public function getTimestampsCols()

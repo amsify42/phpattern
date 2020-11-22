@@ -34,7 +34,7 @@ class Config
 		}
 	}
 
-	public static function get($path)
+	public static function get($path, $default=NULL)
 	{
 		self::checkInit();
 		$pathArr = explode('.', $path);
@@ -42,15 +42,15 @@ class Config
 		{
 			if(isset(self::$array[$pathArr[0]]))
 			{
-				return self::$array->getValue($pathArr);
+				return self::$array->getValue($pathArr, $default);
 			}
 			else if(file_exists(self::configPath($pathArr[0])))
 			{
 				self::extract($pathArr[0]);
-				return self::$array->getValue($pathArr);
+				return self::$array->getValue($pathArr, $default);
 			}
 		}
-		return null;
+		return $default;
 	}
 
 	private static function extract($key)

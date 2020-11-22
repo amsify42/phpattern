@@ -36,11 +36,11 @@ class Credentials
 	private function getCreds()
 	{
 		return [
-			'host' => ENV::get('DB_HOST', '127.0.0.1'),
-			'port' => ENV::get('DB_PORT', '3306'),
-			'user' => ENV::get('DB_USER', 'root'),
-			'password' => ENV::get('DB_PASSWORD', ''),
-			'name' => ENV::get('DB_NAME', '')
+			'host' 		=> ENV::get('DB_HOST', '127.0.0.1'),
+			'port' 		=> ENV::get('DB_PORT', '3306'),
+			'user' 		=> ENV::get('DB_USER', 'root'),
+			'password' 	=> ENV::get('DB_PASSWORD', ''),
+			'name' 		=> ENV::get('DB_NAME', '')
 		];
 	}
 

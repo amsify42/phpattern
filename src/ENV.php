@@ -8,10 +8,10 @@ class ENV
 {
     private static $env = NULL;
 
-    public static function get($key)
+    public static function get($key, $default=NULL)
     {
         self::load();
-        return self::$env->get($key);
+        return self::$env->get($key, $default);
     }
 
     private static function load()
@@ -21,7 +21,7 @@ class ENV
             self::$env = new Config(ROOT_PATH.DS.'.env');
             if(!self::$env->isFile())
             {
-                self::$env->saveContent("DB_HOST=127.0.0.1\nDB_PORT=3306\nDB_NAME=phpattern\nDB_USER=root\nDB_PASSWORD=");
+                self::$env->saveContent("NAME=dev\nDB_HOST=127.0.0.1\nDB_PORT=3306\nDB_NAME=phpattern\nDB_USER=root\nDB_PASSWORD=");
                 self::$env->loadData();
             }
         }
