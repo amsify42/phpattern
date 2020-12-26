@@ -129,6 +129,42 @@ class QueryBuilder
         return $this;
     }
 
+    public function leftJoin($table, $alias=NULL)
+    {
+        $this->actJTab = $table;
+        $info = ['type' => 'LEFT'];
+        if($alias !== NULL)
+        {
+            $info['alias'] = $alias;
+        }
+        $this->join[$table] = $info;
+        return $this;
+    }
+
+    public function rightJoin($table, $alias=NULL)
+    {
+        $this->actJTab = $table;
+        $info = ['type' => 'RIGHT'];
+        if($alias !== NULL)
+        {
+            $info['alias'] = $alias;
+        }
+        $this->join[$table] = $info;
+        return $this;
+    }
+
+    public function fullOuterJoin($table, $alias=NULL)
+    {
+        $this->actJTab = $table;
+        $info = ['type' => 'FULL OUTER'];
+        if($alias !== NULL)
+        {
+            $info['alias'] = $alias;
+        }
+        $this->join[$table] = $info;
+        return $this;
+    }
+
     public function on($x, $op='=', $y=NULL)
     {
         if($this->actJTab)
@@ -478,7 +514,8 @@ class QueryBuilder
             $i = 0;
             foreach($this->join as $table => $tjoin)
             {
-                $query = (($i)?" JOIN ":"JOIN ").$table.(isset($tjoin['alias'])?" ".$tjoin['alias']:"")." ON ";
+                $joinStr = isset($tjoin['type'])? $tjoin['type']." JOIN ": "JOIN ";
+                $query   = (($i)?" ".$joinStr: $joinStr).$table.(isset($tjoin['alias'])?" ".$tjoin['alias']:"")." ON ";
                 if(sizeof($tjoin['conds']) > 0)
                 {
                     $clauses = '';

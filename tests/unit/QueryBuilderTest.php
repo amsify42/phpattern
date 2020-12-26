@@ -163,6 +163,21 @@ final class QueryBuilderTest extends TestCase
         $model->reset();
         $this->assertEquals('SELECT * FROM user JOIN student ON user.id=student.user_id', $query);
 
+        $model = User::select('*')->leftJoin('student')->on('user.id=student.user_id');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals('SELECT * FROM user LEFT JOIN student ON user.id=student.user_id', $query);
+
+        $model = User::select('*')->rightJoin('student')->on('user.id=student.user_id');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals('SELECT * FROM user RIGHT JOIN student ON user.id=student.user_id', $query);
+
+        $model = User::select('*')->fullOuterJoin('student')->on('user.id=student.user_id');
+        $query = $model->query();
+        $model->reset();
+        $this->assertEquals('SELECT * FROM user FULL OUTER JOIN student ON user.id=student.user_id', $query);
+
         $model = User::select('*')->join('student')->on('user.id', '=', 'student.user_id');
         $query = $model->query();
         $model->reset();
