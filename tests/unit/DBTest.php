@@ -7,7 +7,6 @@ use App\Models\User;
 
 final class DBTest extends TestCase
 {
-
     function __construct()
     {
         if(!defined('DS'))

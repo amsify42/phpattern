@@ -8,8 +8,11 @@ use PHPattern\Database\Raw;
 class QueryBuilder
 {
     private $model  = NULL;
+    private $table  = NULL;
     private $type   = '';
     private $data   = [];
+    private $bVals  = [];
+    private $mBVals = [];
     private $cols   = ['*'];
     private $alias  = NULL;
     private $conds  = [];
@@ -34,7 +37,17 @@ class QueryBuilder
 
     private function getTable()
     {
-        return ($this->model)? $this->model->getTable(): NULL;
+        if($this->table === NULL)
+        {
+            $this->table = ($this->model)? $this->model->getTable(): NULL;
+        }
+        return $this->table;
+    }
+
+    public function addBindValues($values=[])
+    {
+        $this->mBVals = $values;
+        return $this;
     }
 
     public function select($cols=['*'])
@@ -50,22 +63,22 @@ class QueryBuilder
         return $this;
     }
 
-    public function where($col, $op=NULL, $value=NULL)
+    public function where($col, $op=NULL, $value=false)
     {
         return $this->setCondition($col, $op, $value);
     }
 
-    public function and($col, $op=NULL, $value=NULL)
+    public function and($col, $op=NULL, $value=false)
     {
         return $this->setCondition($col, $op, $value, DB::SQL_AND);
     }
 
-    public function or($col, $op=NULL, $value=NULL)
+    public function or($col, $op=NULL, $value=false)
     {
         return $this->setCondition($col, $op, $value, DB::SQL_OR);
     }
 
-    private function setCondition($col, $op=NULL, $value=NULL, $conj=NULL)
+    private function setCondition($col, $op=NULL, $value=false, $conj=NULL)
     {
         if(is_array($col))
         {
@@ -78,13 +91,13 @@ class QueryBuilder
                 $this->conds[] = [
                             'conj' => $conj,
                             'col'  => $col,
-                            'op'   => ($value)? $op: self::DEFAULT_OP,
-                            'val'  => ($value)? $value: $op
+                            'op'   => ($value !== false)? $op: self::DEFAULT_OP,
+                            'val'  => ($value !== false)? $value: $op
                         ];        
             }
             else
             {
-                if($value)
+                if($value !== false)
                 {
                     $this->conds[] = [
                             'conj' => DB::SQL_AND,
@@ -165,7 +178,7 @@ class QueryBuilder
         return $this;
     }
 
-    public function on($x, $op='=', $y=NULL)
+    public function on($x, $op='=', $y=false)
     {
         if($this->actJTab)
         {
@@ -344,22 +357,15 @@ class QueryBuilder
         $values = " VALUES (";
         foreach($this->data as $column => $value)
         {
-            $query .= "{$column},";
-            if(in_array($column, $this->model->getTimestampsCols()))
-            {
-                $values .= ($value instanceof Raw || $value == DB::NOW)? $value: "'".$value."'";
-            }
-            else if(is_string($value))
-            {
-                $values .= "'".addslashes($value)."'";
-            }
-            else if($value instanceof Raw)
+            $query .= "{$this->getColumn($column)},";
+            if($this->isTimestamp($column, $value))
             {
                 $values .= $value;
             }
             else
             {
-                $values .= ($value === NULL)? "NULL": $value;
+                $this->bVals[] = $value;
+                $values .= '?';
             }
             $values .= self::DELIMITER;
         }
@@ -368,6 +374,11 @@ class QueryBuilder
         $values = rtrim($values, self::DELIMITER);
         $values .= ")";
         $this->query = $query.$values;
+    }
+
+    private function isTimestamp($column, $value)
+    {
+        return (in_array($column, $this->model->getTimestampsCols()) && $value == DB::NOW);
     }
 
     private function prepareUpdate()
@@ -486,19 +497,16 @@ class QueryBuilder
                 }
                 else
                 {
-                    $query .= "{$column}=";
-                    if(in_array($column, $this->model->getTimestampsCols()))
+                    $query .= "{$this->getColumn($column)}=";
+                    if($this->isTimestamp($column, $value))
                     {
-                        $query .= ($value instanceof Raw || $value == DB::NOW)? $value: "'".$value."'";
-                    }
-                    else if(is_string($value))
-                    {
-                        $query .= "'".addslashes($value)."'";
+                        $query .= $value;
                     }
                     else
                     {
-                        $query .= ($value === NULL)? "NULL": $value;
-                    }  
+                        $this->bVals[] = $value;
+                        $query .= "?";   
+                    }
                 }
                 $query .= self::DELIMITER;
             }
@@ -647,17 +655,19 @@ class QueryBuilder
     public function whereColVal($col, $op, $value, $conj=NULL, $isJoin=false)
     {
         $query  = ($conj)? $conj: DB::SQL_AND;
-        $query .= "{$col}".(($value !== NULL)? $op: "");
-        if($value !== NULL)
+        $query .= "{$col}".(($value !== false)? (($value === NULL)? " IS ": $op): "");
+        if($value !== false)
         {
-            if(is_string($value))
-            {
-                $query .= ($isJoin && strpos($value, '.') !== false)? $value:"'".addslashes($value)."'";
-            }
-            else
-            {
-                $query .= $value;
-            }
+            $this->bVals[] = $value;
+            // if(is_string($value))
+            // {
+            //     $query .= ($isJoin && strpos($value, '.') !== false)? $value:"'".addslashes($value)."'";
+            // }
+            // else
+            // {
+            //     $query .= $value;
+            // }
+            $query .= '?';
         }
         return $query;
     }
@@ -668,18 +678,11 @@ class QueryBuilder
         $inElements = '';
         foreach($items as $item)
         {
-            if(is_string($item))
-            {
-                $inElements .= "'".addslashes($item)."'";
-            }
-            else
-            {
-                $inElements .= $item;
-            }
-            $inElements .= self::DELIMITER;
+            $this->bVals[] = $item;
+            $inElements .= '?'.self::DELIMITER;
         }
         $inElements  = rtrim($inElements, self::DELIMITER);
-        return $query."{$col} IN({$inElements})";
+        return $query."{$this->getColumn($col)} IN({$inElements})";
     }
 
     private function prepareSelect($val='')
@@ -713,7 +716,7 @@ class QueryBuilder
                     $query .= '*';
                     break; 
                 }
-                $query .= "{$col}".self::DELIMITER;
+                $query .= "{$this->getColumn($col)}".self::DELIMITER;
             }
             return rtrim($query, self::DELIMITER);    
         }
@@ -745,14 +748,27 @@ class QueryBuilder
 
     public function execute()
     {
-        $result = DB::execute($this->query, $this->type, '', $this->model->fetchObj(), ($this->model->isORM())? get_class($this->model): '');
+        $bindValues = array_merge($this->bVals, $this->mBVals);
+        DB::setBindValues($bindValues);
+        $result = DB::execute($this->query, $this->type, '', $this->model->fetchObj(), ($this->model->isORM())? get_class($this->model): '', $this->bVals);
         $this->reset();
         return $result;
+    }
+
+    private function getColumn($column)
+    {
+        if($this->getTable())
+        {
+            return "`{$this->getTable()}`.`{$column}`";
+        }
+        return "`{$column}`";
     }
 
     public function reset()
     {
         $this->type   = '';
+        $this->bVals  = [];
+        $this->mBVals = [];
         $this->cols   = ['*'];
         $this->alias  = NULL;
         $this->join   = [];
